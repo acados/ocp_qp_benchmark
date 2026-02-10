@@ -1,0 +1,3 @@
+[submodule "ocp_qp_dataset_collection"]
+	path = ocp_qp_dataset_collection
+	url = https://github.com/acados/ocp_qp_dataset_collection
