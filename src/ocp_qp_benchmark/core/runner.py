@@ -1,5 +1,6 @@
 """Benchmark runner."""
 
+from copy import deepcopy
 from time import perf_counter
 
 import numpy as np
@@ -8,25 +9,23 @@ from tqdm import tqdm
 from acados_template import AcadosOcpQp, AcadosOcpQpSolver, AcadosOcpQpOptions
 
 from ocp_qp_benchmark.core.test_set import TestSet
-from ocp_qp_benchmark.core.solver_set import SolverSet
+from ocp_qp_benchmark.core.solver_set import SolverSet, get_solver_id
 from ocp_qp_benchmark.core.results import Results
 
 
 def solve_problem(
     qp: AcadosOcpQp,
-    solver: str,
-    solver_settings,
+    opts: AcadosOcpQpOptions,
     repeat_times: int = 1,
     print_level: int = 0,
 ) -> dict:
-    """Solve a single QP problem with the given solver.
+    """Solve a single QP problem with the given solver options.
 
     Args:
         qp: The OCP QP problem to solve.
-        solver: Name of the solver to use.
-        solver_settings: Solver settings (currently unused, for future extension).
+        opts: Solver options (will be copied to avoid mutation).
         repeat_times: Number of times to repeat the solve (for timing).
-        print_level: Verbosity level.
+        print_level: Verbosity level (overrides opts.print_level).
 
     Returns:
         Dictionary containing solve results (status, iterations, runtimes, cost).
@@ -37,16 +36,19 @@ def solve_problem(
     if repeat_times != 1:
         raise NotImplementedError("repeat_times != 1 not implemented yet")
 
+    # Copy options to avoid mutation and set print level
+    solver_opts = deepcopy(opts)
+    solver_opts.print_level = print_level - 1
+
     for _ in range(repeat_times):
-        opts = AcadosOcpQpOptions()
-        opts.qp_solver = solver
-        opts.print_level = print_level - 1
-        opts.iter_max = 1000
         try:
-            qp_solver = AcadosOcpQpSolver(qp, opts)
+            qp_solver = AcadosOcpQpSolver(qp, solver_opts)
         except Exception as e:
             if print_level > 0:
-                print(f"Error initializing solver {solver} got error:\n {e}")
+                print(
+                    f"Error initializing solver {opts.qp_solver} "
+                    f"got error:\n {e}"
+                )
             ctx["status"] = -1  # ACADOS_UNKNOWN
             ctx["iterations"] = -1
             ctx["runtime_external"] = -1
@@ -58,7 +60,7 @@ def solve_problem(
         start_time = perf_counter()
         status = qp_solver.solve()
         if print_level > 0 and status != 0:
-            print(f"Solver {solver} failed with status {status}")
+            print(f"Solver {opts.qp_solver} failed with status {status}")
         runtime_external = min(runtime_external, perf_counter() - start_time)
         iter = qp_solver.get_stats("iter")
         runtime_internal = qp_solver.get_stats("time_tot")
@@ -97,37 +99,33 @@ def run(
     progress_bar = None
     if print_level > 0:
         nb_problems = test_set.count_problems()
-        nb_solvers = len(solver_set.solvers)
-        nb_settings = len(solver_set.solver_settings)
+        nb_solvers = len(solver_set)
         progress_bar = tqdm(
-            total=nb_problems * nb_solvers * nb_settings,
+            total=nb_problems * nb_solvers,
             initial=0,
         )
 
-    for solver in solver_set.solvers:
-        # setting is not really used here, but kept for future extension
-        for solver_settings in solver_set.solver_settings:
-            progress_bar.set_description(
-                f"Solver: {solver}, Setting: {solver_settings}"
+    for opts in solver_set:
+        solver_id = get_solver_id(opts)
+        if progress_bar is not None:
+            progress_bar.set_description(f"Solver: {solver_id}")
+
+        for json_path_dict in test_set:
+            qp = AcadosOcpQp.from_json(json_path_dict["qp_data_path"])
+            if print_level > 1:
+                print(
+                    f"Solving problem {json_path_dict['qp_data_path']} "
+                    f"with solver {solver_id}"
+                )
+            ctx = solve_problem(qp, opts, print_level=print_level - 1)
+            results.update(
+                json_path_dict["meta_data_path"],
+                solver_id,
+                ctx,
             )
-            for json_path_dict in test_set:
-                qp = AcadosOcpQp.from_json(json_path_dict["qp_data_path"])
-                if print_level > 1:
-                    print(
-                        f"Solving problem {json_path_dict['qp_data_path']} "
-                        f"with solver {solver} and settings {solver_settings}"
-                    )
-                ctx = solve_problem(
-                    qp, solver, solver_settings, print_level=print_level - 1
-                )
-                results.update(
-                    json_path_dict["meta_data_path"],
-                    solver,
-                    solver_settings,
-                    ctx,
-                )
-                if progress_bar is not None:
-                    progress_bar.update(1)
+            if progress_bar is not None:
+                progress_bar.update(1)
+
         results.write()
 
     if progress_bar is not None:

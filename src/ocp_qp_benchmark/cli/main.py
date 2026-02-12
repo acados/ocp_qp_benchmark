@@ -2,8 +2,12 @@
 
 import os
 
+from acados_template import AcadosOcpQpOptions
+
 from ocp_qp_benchmark.core import Results, TestSet, SolverSet, run
+from ocp_qp_benchmark.core.solver_set import create_solver_options, get_solver_id
 from ocp_qp_benchmark.visualization import plot_metric
+from ocp_qp_benchmark.visualization.plotting import generate_labels
 
 RESULT_PATH = "results/qpbenchmark_results.csv"
 
@@ -41,20 +45,14 @@ def get_all_problems(verbose: bool = True) -> list[str]:
     return designated_problems
 
 
-def main_run(
-    solvers: list[str], test_set: TestSet, solver_settings: list[str]
-) -> None:
+def main_run(solvers: list[AcadosOcpQpOptions], test_set: TestSet) -> None:
     """Run the benchmark.
 
     Args:
-        solvers: List of solver names to benchmark.
+        solvers: List of solver configurations to benchmark.
         test_set: Test set containing problems.
-        solver_settings: List of solver settings to use.
     """
-    solver_set = SolverSet(
-        solvers=solvers,
-        solver_settings=solver_settings,
-    )
+    solver_set = SolverSet(solvers=solvers)
     results = Results(file_path=RESULT_PATH, test_set=test_set)
 
     run(
@@ -67,23 +65,24 @@ def main_run(
 
 def main():
     """Main entry point."""
+    # Create solver configurations
     solvers = [
-        'PARTIAL_CONDENSING_OSQP',
-        'PARTIAL_CONDENSING_HPIPM',
-        'PARTIAL_CONDENSING_CLARABEL',
-        'FULL_CONDENSING_QPOASES',
-        "FULL_CONDENSING_HPIPM",
-        'FULL_CONDENSING_DAQP',
+        create_solver_options("PARTIAL_CONDENSING_OSQP"),
+        create_solver_options("PARTIAL_CONDENSING_HPIPM"),
+        create_solver_options("PARTIAL_CONDENSING_CLARABEL"),
+        create_solver_options("FULL_CONDENSING_QPOASES"),
+        create_solver_options("FULL_CONDENSING_HPIPM"),
+        create_solver_options("FULL_CONDENSING_DAQP"),
     ]
 
     # test_set
     all_problems = get_all_problems()
-    test_set = TestSet(
-        qp_folder_paths=all_problems,
-    )
+    test_set = TestSet(qp_folder_paths=all_problems)
 
-    solver_settings = ["default"]
-    main_run(solvers, test_set, solver_settings)
+    # main_run(solvers, test_set)
+
+    # Generate labels based on differing options
+    labels = generate_labels(solvers)
 
     # filtered
     filtered_test_set = test_set.filter_has_masks(False).filter_has_idxs_rev_not_idxs(
@@ -92,32 +91,40 @@ def main():
     filtered_test_set.description = "Problems without masks and idxs_rev"
 
     results = Results(file_path=RESULT_PATH, test_set=filtered_test_set)
+    solver_ids = [get_solver_id(s) for s in solvers]
     plot_metric(
         metric="runtime_fair",
         df=results.df,
-        settings="default",
         test_set=filtered_test_set,
-        solvers=solvers,
+        solver_ids=solver_ids,
+        labels=labels,
         linewidth=2.0,
         savefig="figures/qpbenchmark_runtime_filtered.pdf",
     )
 
-    # full evaluation
-    solvers = [
-        "PARTIAL_CONDENSING_HPIPM",
-        "FULL_CONDENSING_HPIPM",
-        "FULL_CONDENSING_DAQP",
+    # full evaluation with subset of solvers
+    eval_solvers = [
+        create_solver_options("PARTIAL_CONDENSING_HPIPM"),
+        create_solver_options("FULL_CONDENSING_HPIPM"),
+        create_solver_options("FULL_CONDENSING_DAQP"),
     ]
+    eval_labels = generate_labels(eval_solvers)
+    eval_solver_ids = [get_solver_id(s) for s in eval_solvers]
+
     results = Results(file_path=RESULT_PATH, test_set=test_set)
     plot_metric(
         metric="runtime_fair",
         df=results.df,
-        settings="default",
         test_set=test_set,
-        solvers=solvers,
+        solver_ids=eval_solver_ids,
+        labels=eval_labels,
         linewidth=2.0,
         savefig="figures/qpbenchmark_runtime.pdf",
     )
+
+
+if __name__ == "__main__":
+    main()
 
 
 if __name__ == "__main__":

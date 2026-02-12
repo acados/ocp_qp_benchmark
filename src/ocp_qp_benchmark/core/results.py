@@ -59,7 +59,6 @@ class Results:
             columns=[
                 "problem",
                 "solver",
-                "settings",
                 "cost",
                 "iterations",
                 "runtime_external",
@@ -71,7 +70,6 @@ class Results:
             {
                 "problem": str,
                 "solver": str,
-                "settings": str,
                 "cost": float,
                 "iterations": int,
                 "runtime_external": float,
@@ -121,7 +119,7 @@ class Results:
         path_check = path or self.file_path
         save_path = Path(path_check)
         save_df = pandas.concat([self.df, self.__complementary_df])
-        save_df = save_df.sort_values(by=["problem", "solver", "settings"])
+        save_df = save_df.sort_values(by=["problem", "solver"])
         if save_path.suffix == ".csv":
             save_df.to_csv(save_path, index=False)
         elif save_path.suffix == ".parquet":
@@ -130,16 +128,14 @@ class Results:
     def update(
         self,
         problem: Path,
-        solver: str,
-        settings: str,
+        solver_id: str,
         context: dict,
     ) -> None:
         """Update entry for a given (problem, solver) pair.
 
         Args:
-            problem: Problem solved.
-            solver: Solver name.
-            settings: Solver settings.
+            problem: Path to problem meta file.
+            solver_id: Solver identifier string.
             context: Solution context containing status, iterations, etc.
         """
         with open(problem, "r") as f:
@@ -149,8 +145,7 @@ class Results:
         self.df = self.df.drop(
             self.df.index[
                 (self.df["problem"] == problem_name)
-                & (self.df["solver"] == solver)
-                & (self.df["settings"] == settings)
+                & (self.df["solver"] == solver_id)
             ]
         )
 
@@ -158,8 +153,7 @@ class Results:
             [
                 {
                     "problem": problem_name,
-                    "solver": solver,
-                    "settings": settings,
+                    "solver": solver_id,
                     "cost": context["cost"],
                     "iterations": context["iterations"],
                     "runtime_external": context["runtime_external"],
@@ -170,3 +164,7 @@ class Results:
             ]
         )
         self.df = pandas.concat([self.df, new_row], ignore_index=True)
+
+    def get_solver_ids(self) -> list[str]:
+        """Get list of unique solver IDs in results."""
+        return list(self.df["solver"].unique())

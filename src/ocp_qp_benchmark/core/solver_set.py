@@ -1,57 +1,105 @@
-"""Solver settings."""
+"""Solver settings and configuration."""
 
-from typing import Set
+import inspect
+from typing import List
+
+from acados_template import AcadosOcpQpOptions
 
 
-class SolverSettings:
-    """Settings for multiple solvers."""
+def get_solver_id(opts: AcadosOcpQpOptions) -> str:
+    """Generate a unique identifier string from solver options.
 
-    IMPLEMENTED_SOLVERS: Set[str] = set(
-        [
-            "PARTIAL_CONDENSING_HPIPM",
-            "FULL_CONDENSING_QPOASES",
-            "FULL_CONDENSING_HPIPM",
-            "PARTIAL_CONDENSING_QPDUNES",
-            "PARTIAL_CONDENSING_OSQP",
-            "PARTIAL_CONDENSING_CLARABEL",
-            "FULL_CONDENSING_DAQP",
-        ]
-    )
+    This ID is used to store results in CSV and identify solver configurations.
 
-    SOLVER_SETTINGS: Set[str] = set(
-        [
-            "default",
-        ]
-    )
+    Args:
+        opts: Solver options object.
 
-    @staticmethod
-    def is_compiled(solver: str) -> bool:
-        # TODO: check solver compliance
-        return True
+    Returns:
+        Unique identifier string for this configuration.
+    """
+    parts = [opts.qp_solver]
+
+    # Add non-default options to the ID
+    default_opts = AcadosOcpQpOptions()
+
+    # Get all properties of the class
+    props = [name for name, value in inspect.getmembers(type(opts)) if isinstance(value, property)]
+    
+    for attr in props:
+        opts_value = getattr(opts, attr)
+        default_value = getattr(default_opts, attr)
+        if opts_value != default_value:
+            parts.append(f"{attr}={opts_value}")
+
+    return "_".join(parts)
+
+
+def create_solver_options(
+    qp_solver: str,
+    print_level: int = 0,
+    iter_max: int = 1000,
+    **kwargs,
+) -> AcadosOcpQpOptions:
+    """Create solver options with common defaults.
+
+    Args:
+        qp_solver: Name of the QP solver.
+        print_level: Verbosity level.
+        iter_max: Maximum iterations.
+        **kwargs: Additional options to set.
+
+    Returns:
+        Configured AcadosOcpQpOptions object.
+    """
+    opts = AcadosOcpQpOptions()
+    opts.qp_solver = qp_solver
+    opts.print_level = print_level
+    opts.iter_max = iter_max
+
+    for key, value in kwargs.items():
+        if hasattr(opts, key):
+            setattr(opts, key, value)
+        else:
+            raise ValueError(f"Unknown option: {key}")
+
+    return opts
 
 
 class SolverSet:
-    def __init__(
-        self,
-        solvers: list[str] = None,
-        solver_settings: list[str] = None,
-    ):
-        if solvers is None:
-            solvers = list(SolverSettings.IMPLEMENTED_SOLVERS)
-        if solver_settings is None:
-            solver_settings = list(SolverSettings.SOLVER_SETTINGS)
+    """Collection of solver configurations to benchmark."""
 
-        candidate_solvers = set(
-            solver
-            for solver in SolverSettings.IMPLEMENTED_SOLVERS
-            if solver in solvers
-        )
+    def __init__(self, solvers: List[AcadosOcpQpOptions]):
+        """Initialize solver set.
 
-        solvers = set(
-            solver
-            for solver in candidate_solvers
-            if SolverSettings.is_compiled(solver)
-        )
-
+        Args:
+            solvers: List of solver option configurations.
+        """
         self.solvers = solvers
-        self.solver_settings = solver_settings
+
+    def __len__(self) -> int:
+        return len(self.solvers)
+
+    def __iter__(self):
+        return iter(self.solvers)
+
+    @staticmethod
+    def from_solver_names(
+        solver_names: List[str],
+        print_level: int = 0,
+        iter_max: int = 1000,
+    ) -> "SolverSet":
+        """Create a SolverSet from a list of solver names with default options.
+
+        Args:
+            solver_names: List of QP solver names.
+            print_level: Verbosity level for all solvers.
+            iter_max: Maximum iterations for all solvers.
+
+        Returns:
+            SolverSet with default configurations.
+        """
+        solvers = [
+            create_solver_options(name, print_level=print_level, iter_max=iter_max)
+            for name in solver_names
+        ]
+        return SolverSet(solvers)
