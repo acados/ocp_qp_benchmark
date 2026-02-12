@@ -34,6 +34,8 @@ def solve_problem(qp: AcadosOcpQp, solver: str, solver_settings, repeat_times: i
             return ctx
         start_time = perf_counter()
         status = qp_solver.solve()
+        if print_level > 0 and status != 0:
+            print(f"Solver {solver} failed with status {status}")
         runtime_external = min(runtime_external, perf_counter() - start_time)
         iter = qp_solver.get_stats('iter')
         runtime_internal = qp_solver.get_stats('time_tot')
