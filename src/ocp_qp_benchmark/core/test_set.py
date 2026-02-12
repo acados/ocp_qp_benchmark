@@ -1,10 +1,13 @@
+"""Test set management."""
+
 import os
-import json
-from typing import Dict, Any, Callable
+from typing import Any, Callable, Dict
 
-from utils import load_meta_data
+from ocp_qp_benchmark.utils.io import load_meta_data
 
-class TestSet():
+
+class TestSet:
+    """Represents a collection of QP problems for benchmarking."""
 
     @property
     def description(self) -> str:
@@ -18,10 +21,8 @@ class TestSet():
     def title(self) -> str:
         return self.__description
 
-    def __init__(self,
-                 qp_folder_paths: list[str]):
+    def __init__(self, qp_folder_paths: list[str]):
         """Initialize test set."""
-
         self.qp_folder_paths = qp_folder_paths
         self.__description = ""
 
@@ -31,9 +32,15 @@ class TestSet():
             qp_folder_name = os.path.basename(qp_folder_path)
             if os.path.isdir(qp_folder_path):
                 path_dict = {
-                    'qp_data_path': os.path.join(qp_folder_path, f"{qp_folder_name}.json"),
-                    'meta_data_path': os.path.join(qp_folder_path, f"{qp_folder_name}_meta.json"),
-                    'ref_sol_path': os.path.join(qp_folder_path, f"{qp_folder_name}_ref_sol.json"),
+                    "qp_data_path": os.path.join(
+                        qp_folder_path, f"{qp_folder_name}.json"
+                    ),
+                    "meta_data_path": os.path.join(
+                        qp_folder_path, f"{qp_folder_name}_meta.json"
+                    ),
+                    "ref_sol_path": os.path.join(
+                        qp_folder_path, f"{qp_folder_name}_ref_sol.json"
+                    ),
                 }
                 yield path_dict
 
@@ -46,7 +53,8 @@ class TestSet():
         Filter problems based on meta data using a custom filter function.
 
         Args:
-            filter_func: A function that takes meta data dict and returns True if problem should be included
+            filter_func: A function that takes meta data dict and returns True
+                         if problem should be included
 
         Returns:
             A new TestSet instance with filtered problems
@@ -62,13 +70,20 @@ class TestSet():
         return TestSet(filtered_paths)
 
     def filter_has_slacks(self, has_slacks: bool = True):
-        """
-        Filter problems based on whether they have slacks.
-        """
-        return self.filter_by_meta(lambda meta: meta.get('has_slacks', False) == has_slacks)
+        """Filter problems based on whether they have slacks."""
+        return self.filter_by_meta(
+            lambda meta: meta.get("has_slacks", False) == has_slacks
+        )
 
     def filter_has_masks(self, has_masks: bool = True):
-        return self.filter_by_meta(lambda meta: meta.get('has_masks', False) == has_masks)
+        """Filter problems based on whether they have masks."""
+        return self.filter_by_meta(
+            lambda meta: meta.get("has_masks", False) == has_masks
+        )
 
     def filter_has_idxs_rev_not_idxs(self, has_idxs_rev_not_idxs: bool = True):
-        return self.filter_by_meta(lambda meta: meta.get('has_idxs_rev_not_idxs', False) == has_idxs_rev_not_idxs)
+        """Filter problems based on whether they have idxs_rev but not idxs."""
+        return self.filter_by_meta(
+            lambda meta: meta.get("has_idxs_rev_not_idxs", False)
+            == has_idxs_rev_not_idxs
+        )

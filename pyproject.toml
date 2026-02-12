@@ -1,0 +1,30 @@
+[project]
+name = "ocp-qp-benchmark"
+version = "0.1.0"
+description = "Benchmarking framework for OCP QP solvers"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "pandas",
+    "matplotlib",
+    "tqdm",
+    "acados-template",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+]
+
+[project.scripts]
+ocp-benchmark = "ocp_qp_benchmark.cli.main:main"
+add-problems = "ocp_qp_benchmark.cli.add_problems:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

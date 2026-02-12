@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas
 
-from test_set_ocp import TestSet
+from ocp_qp_benchmark.core.test_set import TestSet
 from acados_template import latexify_plot
 
 
@@ -33,6 +33,8 @@ def plot_metric(
         linewidth: Width of output lines, in px.
         savefig: If set, save plot to this path rather than displaying it.
         title: Plot title, set to "" to disable.
+        latexify: Whether to apply LaTeX styling to the plot.
+        legend_loc: Location of the legend.
     """
     if latexify:
         latexify_plot()
@@ -40,7 +42,9 @@ def plot_metric(
     plt.figure()
 
     assert issubclass(df[metric].dtype.type, np.floating)
-    print(f"Plotting {metric} for {settings} settings on {test_set.description}...")
+    print(
+        f"Plotting {metric} for {settings} settings on {test_set.description}..."
+    )
     nb_problems = test_set.count_problems()
     settings_df = df[df["settings"] == settings]
     solved_df = settings_df[settings_df["status"] == 0]
@@ -49,8 +53,8 @@ def plot_metric(
     )
 
     n_solvers = len(plot_solvers)
-    colors = [f'C{i}' for i in range(n_solvers)]
-    linestyles = ['-', '--', '-.', ':'] * (n_solvers // 4 + 1)
+    colors = [f"C{i}" for i in range(n_solvers)]
+    linestyles = ["-", "--", "-.", ":"] * (n_solvers // 4 + 1)
 
     # First, collect all values for each solver
     solver_values = {}
@@ -58,11 +62,16 @@ def plot_metric(
     for solver in plot_solvers:
         values = solved_df[solved_df["solver"] == solver][metric].values
         if len(values) == 0:
-            print(f"Warning: no values to plot for solver {solver} with settings {settings}")
+            print(
+                f"Warning: no values to plot for solver {solver} "
+                f"with settings {settings}"
+            )
             continue
         sorted_values = np.sort(values)
         solver_values[solver] = sorted_values
-        max_value = max(max_value, sorted_values[-1] if len(sorted_values) > 0 else 0)
+        max_value = max(
+            max_value, sorted_values[-1] if len(sorted_values) > 0 else 0
+        )
 
     # Second, plot all solvers with same max x value
     for i, (solver, values) in enumerate(solver_values.items()):
@@ -70,7 +79,14 @@ def plot_metric(
         y = np.arange(1, 1 + nb_solved)
         padded_values = np.hstack([values, [max_value]])
         padded_y = np.hstack([y, [nb_solved]])
-        plt.step(padded_values, padded_y, linewidth=linewidth, label=solver, color=colors[i], linestyle=linestyles[i])
+        plt.step(
+            padded_values,
+            padded_y,
+            linewidth=linewidth,
+            label=solver,
+            color=colors[i],
+            linestyle=linestyles[i],
+        )
 
     plt.legend(loc=legend_loc)
     if title is None:
@@ -86,5 +102,5 @@ def plot_metric(
     if savefig:
         plt.savefig(fname=savefig)
         print(f"Saved plot to {savefig}")
-    else:  # display figure
+    else:
         plt.show(block=True)

@@ -2,12 +2,11 @@
 
 import json
 from pathlib import Path
-from typing import Dict, Optional, Tuple, Union
+from typing import Optional, Union
 
-import numpy as np
 import pandas
 
-from test_set_ocp import TestSet
+from ocp_qp_benchmark.core.test_set import TestSet
 
 
 class Results:
@@ -73,8 +72,8 @@ class Results:
                 "problem": str,
                 "solver": str,
                 "settings": str,
-                'cost': float,
-                'iterations': int,
+                "cost": float,
+                "iterations": int,
                 "runtime_external": float,
                 "runtime_internal": float,
                 "runtime_fair": float,
@@ -89,16 +88,20 @@ class Results:
                 df = pandas.concat([df, df_from_file])
             else:
                 import os
-                print(f"Warning: file {file_path} does not exist. Initializing empty results.")
+
+                print(
+                    f"Warning: file {file_path} does not exist. "
+                    "Initializing empty results."
+                )
                 os.makedirs(file_path.parent, exist_ok=True)
                 df.to_csv(file_path, index=False)
 
         # Filter out problems from the CSV that are in the test set
         problems = []
         for path_dict in test_set:
-            with open(path_dict['meta_data_path'], 'r') as f:
+            with open(path_dict["meta_data_path"], "r") as f:
                 meta_data = json.load(f)
-            problem_name = meta_data['name'].split('.')[0]
+            problem_name = meta_data["name"].split(".")[0]
             problems.append(problem_name)
 
         test_set_df = df[df["problem"].isin(problems)]
@@ -137,12 +140,11 @@ class Results:
             problem: Problem solved.
             solver: Solver name.
             settings: Solver settings.
-            solution: Solution found by the solver.
-            runtime: Duration the solver took, in seconds.
+            context: Solution context containing status, iterations, etc.
         """
-        with open(problem, 'r') as f:
+        with open(problem, "r") as f:
             meta_data = json.load(f)
-        problem_name = meta_data['name'].split('.')[0]
+        problem_name = meta_data["name"].split(".")[0]
 
         self.df = self.df.drop(
             self.df.index[
@@ -151,22 +153,20 @@ class Results:
                 & (self.df["settings"] == settings)
             ]
         )
-        self.df = pandas.concat(
+
+        new_row = pandas.DataFrame(
             [
-                self.df,
-                pandas.DataFrame(
-                    {
-                        "problem": [problem_name],
-                        "solver": [solver],
-                        "settings": [settings],
-                        "cost": [context['cost']],
-                        'iterations': [context['iterations']],
-                        "runtime_external": [context['runtime_external']],
-                        "runtime_internal": [context['runtime_internal']],
-                        "runtime_fair": [context['runtime_fair']],
-                        "status": [context['status']],
-                    }
-                ),
-            ],
-            ignore_index=True,
+                {
+                    "problem": problem_name,
+                    "solver": solver,
+                    "settings": settings,
+                    "cost": context["cost"],
+                    "iterations": context["iterations"],
+                    "runtime_external": context["runtime_external"],
+                    "runtime_internal": context["runtime_internal"],
+                    "runtime_fair": context["runtime_fair"],
+                    "status": context["status"],
+                }
+            ]
         )
+        self.df = pandas.concat([self.df, new_row], ignore_index=True)
