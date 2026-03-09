@@ -9,8 +9,9 @@ import pandas
 from ocp_qp_benchmark.core.test_set import TestSet
 
 
-class Results:
-    """Test set results.
+class ResultLogger:
+    """
+    Log Test set results into csv file or parquet file.
 
     Attributes:
         df: Data frame storing the results.
@@ -81,7 +82,7 @@ class Results:
 
         if file_path is not None:
             file_path = Path(file_path)
-            df_from_file = Results.read_from_file(file_path)
+            df_from_file = ResultLogger.read_from_file(file_path)
             if df_from_file is not None:
                 df = pandas.concat([df, df_from_file])
             else:

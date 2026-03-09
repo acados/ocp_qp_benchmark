@@ -21,9 +21,24 @@ class TestSet:
     def title(self) -> str:
         return self.__description
 
-    def __init__(self, qp_folder_paths: list[str]):
-        """Initialize test set."""
+    def __init__(self, qp_folder_paths: list[str] = None, verbose: bool = True):
+        """
+        Initialize test set.
+        Args:
+            qp_folder_paths: List of paths to folders containing QP problems.(e.g., ["ocp_qp_dataset_collection/random_qp/prob_0", ...])
+            if None, all problems from the dataset collection will be used.
+
+            verbose: Whether to print information about found folders.
+        """
+        if qp_folder_paths is None:
+            raise ValueError("No QP folder paths provided. Please provide a list of paths to QP problem folders.")
+
         self.qp_folder_paths = qp_folder_paths
+        subfolders = [os.path.basename(path) for path in qp_folder_paths]
+        if verbose:
+            print("Designated QP problems:")
+            for folder in subfolders:
+                print(f"  - {folder}")
         self.__description = ""
 
     def __iter__(self):
@@ -48,42 +63,21 @@ class TestSet:
         """Count the number of problems in the test set."""
         return len(self.qp_folder_paths)
 
-    def filter_by_meta(self, filter_func: Callable[[Dict[str, Any]], bool]):
+    def filter_problems(self, opts : dict = None):
         """
-        Filter problems based on meta data using a custom filter function.
-
+        Filter problems based on options.
         Args:
-            filter_func: A function that takes meta data dict and returns True
-                         if problem should be included
-
-        Returns:
-            A new TestSet instance with filtered problems
+            opts: Dictionary of options to filter by (e.g., {"has_slacks": True})
         """
         filtered_paths = []
-
+        if opts is None:
+            return self.qp_folder_paths
         for qp_folder_path in self.qp_folder_paths:
             if os.path.isdir(qp_folder_path):
                 meta_data = load_meta_data(qp_folder_path)
-                if filter_func(meta_data):
-                    filtered_paths.append(qp_folder_path)
-
-        return TestSet(filtered_paths)
-
-    def filter_has_slacks(self, has_slacks: bool = True):
-        """Filter problems based on whether they have slacks."""
-        return self.filter_by_meta(
-            lambda meta: meta.get("has_slacks", False) == has_slacks
-        )
-
-    def filter_has_masks(self, has_masks: bool = True):
-        """Filter problems based on whether they have masks."""
-        return self.filter_by_meta(
-            lambda meta: meta.get("has_masks", False) == has_masks
-        )
-
-    def filter_has_idxs_rev_not_idxs(self, has_idxs_rev_not_idxs: bool = True):
-        """Filter problems based on whether they have idxs_rev but not idxs."""
-        return self.filter_by_meta(
-            lambda meta: meta.get("has_idxs_rev_not_idxs", False)
-            == has_idxs_rev_not_idxs
-        )
+                for key, value in opts.items():
+                    if meta_data.get(key) != value:
+                        break
+                    else:
+                        filtered_paths.append(qp_folder_path)
+        self.qp_folder_paths = filtered_paths

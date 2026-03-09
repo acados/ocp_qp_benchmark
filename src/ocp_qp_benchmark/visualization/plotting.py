@@ -6,88 +6,24 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas
 
-from acados_template import AcadosOcpQpOptions, latexify_plot
+from acados_template import latexify_plot
 
 from ocp_qp_benchmark.core.test_set import TestSet
-from ocp_qp_benchmark.core.solver_set import get_solver_id
-
-
-def generate_labels(
-    solvers: List[AcadosOcpQpOptions],
-) -> Dict[str, str]:
-    """Generate plot labels showing only the options that differ between solvers.
-
-    Args:
-        solvers: List of solver option configurations.
-
-    Returns:
-        Dictionary mapping solver_id to display label.
-    """
-    if len(solvers) == 0:
-        return {}
-
-    if len(solvers) == 1:
-        return {get_solver_id(solvers[0]): solvers[0].qp_solver}
-
-    # Collect all attribute values
-    attrs_to_check = [
-        "qp_solver",
-        "tol_stat",
-        "tol_eq",
-        "tol_ineq",
-        "tol_comp",
-        "iter_max",
-        "cond_N",
-    ]
-
-    # Find which attributes differ
-    differing_attrs = []
-    for attr in attrs_to_check:
-        values = [getattr(opts, attr) for opts in solvers]
-        if len(set(str(v) for v in values)) > 1:
-            differing_attrs.append(attr)
-
-    # Generate labels based on differing attributes
-    labels = {}
-    for opts in solvers:
-        solver_id = get_solver_id(opts)
-
-        if not differing_attrs:
-            # All same, just use qp_solver name
-            labels[solver_id] = opts.qp_solver
-        elif differing_attrs == ["qp_solver"]:
-            # Only solver differs, use short name
-            labels[solver_id] = _shorten_solver_name(opts.qp_solver)
-        else:
-            # Multiple things differ, show them
-            parts = []
-            for attr in differing_attrs:
-                value = getattr(opts, attr)
-                if attr == "qp_solver":
-                    parts.append(_shorten_solver_name(value))
-                elif isinstance(value, float) and value < 0.01:
-                    parts.append(f"{attr}={value:.0e}")
-                else:
-                    parts.append(f"{attr}={value}")
-            labels[solver_id] = ", ".join(parts)
-
-    return labels
-
 
 def _shorten_solver_name(name: str) -> str:
     """Shorten solver name for plot labels."""
     # Remove common prefixes
-    short = name.replace("PARTIAL_CONDENSING_", "PCOND ")
-    short = short.replace("FULL_CONDENSING_", "FCOND ")
-    return short
-
+    split_text = name.split("_")
+    solver_name = "_".join([part for part in split_text if part.isupper()])
+    short_name = solver_name.replace("PARTIAL_CONDENSING", "PCOND")
+    short_name = short_name.replace("FULL_CONDENSING", "FCOND")
+    return short_name
 
 def plot_metric(
     metric: str,
     df: pandas.DataFrame,
     test_set: TestSet,
     solver_ids: Optional[List[str]] = None,
-    labels: Optional[Dict[str, str]] = None,
     linewidth: float = 2.0,
     savefig: Optional[str] = None,
     title: Optional[str] = None,
@@ -128,8 +64,8 @@ def plot_metric(
     linestyles = ["-", "--", "-.", ":"] * (n_solvers // 4 + 1)
 
     # Default labels: use solver_id directly
-    if labels is None:
-        labels = {sid: sid for sid in plot_solver_ids}
+    shorten_names = [_shorten_solver_name(solver_id) for solver_id in plot_solver_ids]
+    labels = {sid: shorten_names[i] for i, sid in enumerate(plot_solver_ids)}
 
     # First, collect all values for each solver
     solver_values = {}
