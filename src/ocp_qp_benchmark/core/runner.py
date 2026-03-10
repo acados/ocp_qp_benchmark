@@ -10,7 +10,7 @@ from acados_template import AcadosOcpQp, AcadosOcpQpSolver, AcadosOcpQpOptions
 
 from ocp_qp_benchmark.core.test_set import TestSet
 from ocp_qp_benchmark.core.solver_set import SolverSet
-from ocp_qp_benchmark.core.result_logger import ResultLogger
+from ocp_qp_benchmark.core.result import Result
 
 
 def solve_problem(
@@ -85,7 +85,7 @@ def solve_problem(
 def run(
     test_set: TestSet,
     solver_set: SolverSet,
-    results: ResultLogger,
+    results: Result,
     print_level: int = 1,
 ) -> None:
     """Run a given test set and store results.

@@ -64,8 +64,12 @@ def plot_metric(
     linestyles = ["-", "--", "-.", ":"] * (n_solvers // 4 + 1)
 
     # Default labels: use solver_id directly
-    shorten_names = [_shorten_solver_name(solver_id) for solver_id in plot_solver_ids]
-    labels = {sid: shorten_names[i] for i, sid in enumerate(plot_solver_ids)}
+    labels = {}
+    seen = {}
+    for sid in plot_solver_ids:
+        name = _shorten_solver_name(sid)
+        seen[name] = seen.get(name, 0) + 1
+        labels[sid] = f"{name}_{seen[name] - 1}"
 
     # First, collect all values for each solver
     solver_values = {}

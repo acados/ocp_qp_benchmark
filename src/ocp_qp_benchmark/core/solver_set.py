@@ -27,20 +27,22 @@ EXTERNAL_SOLVERS = [
 class SolverSet:
     """Collection of solver configurations to benchmark."""
 
-    def __init__(self, solver_dict: dict[str, dict]):
+    def __init__(self, solver_dicts: tuple[dict[str, dict]]):
         """Initialize solver set.
 
         Args:
             solver_dict: Dictionary mapping solver names to their configurations.
         """
-        self.solver_dict = solver_dict
+        self.solver_dicts = solver_dicts
         self.solvers = []
         self.solver_ids = []
         with open(AcadosCodeGenOpts().acados_lib_path + '/link_libs.json', 'r') as f:
             self.link_lib_dict = json.load(f)
         self.link_lib_dict['hpipm'] = 'hpipm'  # hpipm is default and not in link_libs.json
 
-        for name, opts in solver_dict.items():
+        for solver_dict in self.solver_dicts:
+            name = list(solver_dict.keys())[0]
+            opts = list(solver_dict.values())[0]
             if name in ACADOS_OCP_QP_SOLVERS:
                 self._add_acados_qp_solver(name, opts)
             elif name in ACADOS_CASADI_SOLVERS:
