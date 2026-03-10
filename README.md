@@ -5,6 +5,9 @@ Benchmarking framework for OCP QP solvers using [acados](https://github.com/acad
 ## Installation
 
 ```bash
+git clone https://github.com/acados/ocp_qp_benchmark.git
+cd ocp_qp_benchmark
+git submodule update --recursive --init
 pip install -e .
 ```
 

@@ -1,0 +1,46 @@
+name: Benchmark test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  cli_tests:
+    name: CLI Commands Tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11"]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        path: ${{github.workspace}}/ocp_qp_benchmark
+        submodules: 'recursive'
+
+    - name: Setup environment
+      uses: ./ocp_qp_benchmark/.github/actions/setup-acados
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install current project
+      working-directory: ${{github.workspace}}/ocp_qp_benchmark
+      run: |
+        pip install -e .
+
+    - name: Verify CLI Tools
+      working-directory: ${{github.workspace}}/ocp_qp_benchmark
+      run: |
+        echo "Testing ocp-benchmark CLI..."
+        ocp-benchmark --help
+        
+        echo "Testing add-problems CLI..."
+        add-problems --help
+
+    - name: Run benchmark with designated problems and designated solvers
+      working-directory: ${{github.workspace}}/ocp_qp_benchmark
+      run: |
+        echo "Running ocp-benchmark to verify it executes..."
+        ocp-benchmark -f ocp_qp_dataset_collection/random_qp -s FULL_CONDENSING_QPOASES,PARTIAL_CONDENSING_HPIPM

@@ -5,6 +5,9 @@ from .results import Results
 from .test_set import TestSet
 from .solver_set import (
     SolverSet,
-    get_solver_id,
-    create_solver_options,
+)
+from .supported_solvers import (
+    ACADOS_OCP_QP_SOLVERS,
+    ACADOS_CASADI_SOLVERS,
+    EXTERNAL_SOLVERS
 )

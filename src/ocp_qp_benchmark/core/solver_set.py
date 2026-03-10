@@ -1,80 +1,45 @@
 """Solver settings and configuration."""
 
 import inspect
-from typing import List
+from typing import List, Union
 
 from acados_template import AcadosOcpQpOptions
-
-
-def get_solver_id(opts: AcadosOcpQpOptions) -> str:
-    """Generate a unique identifier string from solver options.
-
-    This ID is used to store results in CSV and identify solver configurations.
-
-    Args:
-        opts: Solver options object.
-
-    Returns:
-        Unique identifier string for this configuration.
-    """
-    parts = [opts.qp_solver]
-
-    # Add non-default options to the ID
-    default_opts = AcadosOcpQpOptions()
-
-    # Get all properties of the class
-    props = [name for name, value in inspect.getmembers(type(opts)) if isinstance(value, property)]
-    
-    for attr in props:
-        opts_value = getattr(opts, attr)
-        default_value = getattr(default_opts, attr)
-        if opts_value != default_value:
-            parts.append(f"{attr}={opts_value}")
-
-    return "_".join(parts)
-
-
-def create_solver_options(
-    qp_solver: str,
-    print_level: int = 0,
-    iter_max: int = 1000,
-    **kwargs,
-) -> AcadosOcpQpOptions:
-    """Create solver options with common defaults.
-
-    Args:
-        qp_solver: Name of the QP solver.
-        print_level: Verbosity level.
-        iter_max: Maximum iterations.
-        **kwargs: Additional options to set.
-
-    Returns:
-        Configured AcadosOcpQpOptions object.
-    """
-    opts = AcadosOcpQpOptions()
-    opts.qp_solver = qp_solver
-    opts.print_level = print_level
-    opts.iter_max = iter_max
-
-    for key, value in kwargs.items():
-        if hasattr(opts, key):
-            setattr(opts, key, value)
-        else:
-            raise ValueError(f"Unknown option: {key}")
-
-    return opts
-
+from acados_template.acados_code_gen_opts import AcadosCodeGenOpts
+from ocp_qp_benchmark.core.supported_solvers import (
+    ACADOS_OCP_QP_SOLVERS,
+    ACADOS_CASADI_SOLVERS,
+    EXTERNAL_SOLVERS,
+)
+import json
 
 class SolverSet:
     """Collection of solver configurations to benchmark."""
 
-    def __init__(self, solvers: List[AcadosOcpQpOptions]):
+    def __init__(self, solver_list: list[tuple[str, dict]]):
         """Initialize solver set.
 
         Args:
-            solvers: List of solver option configurations.
+            solver_list: List of tuples mapping solver names to their configurations.
         """
-        self.solvers = solvers
+        self.solver_list = solver_list
+        self.solvers = []
+        self.solver_ids = []
+        with open(AcadosCodeGenOpts().acados_lib_path + '/link_libs.json', 'r') as f:
+            self.link_lib_dict = json.load(f)
+        self.link_lib_dict['hpipm'] = 'hpipm'  # hpipm is default and not in link_libs.json
+
+        for solver_tuple in self.solver_list:
+            name = solver_tuple[0]
+            opts = solver_tuple[1]
+            if name in ACADOS_OCP_QP_SOLVERS:
+                self._add_acados_qp_solver(name, opts)
+            elif name in ACADOS_CASADI_SOLVERS:
+                self._add_acados_casadi_qp_solver(name, opts)
+            elif name in EXTERNAL_SOLVERS:
+                self._add_external_solver(name, opts)
+            else:
+                raise ValueError(f"Unknown solver: {name}")
+        self.solver_ids = [self._create_solver_id(opts) for opts in self.solvers]
 
     def __len__(self) -> int:
         return len(self.solvers)
@@ -82,24 +47,75 @@ class SolverSet:
     def __iter__(self):
         return iter(self.solvers)
 
-    @staticmethod
-    def from_solver_names(
-        solver_names: List[str],
-        print_level: int = 0,
-        iter_max: int = 1000,
-    ) -> "SolverSet":
-        """Create a SolverSet from a list of solver names with default options.
+    def _add_acados_qp_solver(self, name: str, opts: dict):
+        '''
+        Add an acados OCP QP solver configuration to the set.
+        '''
+        if self.check_compile(name):
+            solver_opts = AcadosOcpQpOptions()
+            solver_opts.qp_solver = name
+            solver_opts.iter_max = opts.get("iter_max", 1000)
+            for key, value in opts.items():
+                if hasattr(solver_opts, key):
+                    setattr(solver_opts, key, value)
+                else:
+                    raise ValueError(f"Unknown option: {key}")
+            self.solvers.append(solver_opts)
+        else:
+            print(f"Skipping solver {name} due to missing dependencies.")
+
+    def _add_acados_casadi_qp_solver(self, name: str, opts: dict):
+        raise NotImplementedError(f"Casadi solvers not implemented yet")
+
+    def _add_external_solver(self, name: str, opts: dict):
+        raise NotImplementedError(f"External solvers not implemented yet")
+
+    def check_compile(self, name: str) -> bool:
+        solver_name = name.lower().split("_")[-1]
+        if self.link_lib_dict[solver_name] == '':
+            return False
+        return True
+
+    def _create_solver_id(self, opts: Union[AcadosOcpQpOptions, dict]) -> str:
+        """
+        Generate a unique identifier string from solver options.
+        e.g., "PARTIAL_CONDENSING_OSQP_iter_max=500" for an AcadosOcpQpOptions with qp_solver="PARTIAL_CONDENSING_OSQP" and iter_max=500.
 
         Args:
-            solver_names: List of QP solver names.
-            print_level: Verbosity level for all solvers.
-            iter_max: Maximum iterations for all solvers.
+            opts: Solver options object.
 
         Returns:
-            SolverSet with default configurations.
+            Unique identifier string for this configuration.
         """
-        solvers = [
-            create_solver_options(name, print_level=print_level, iter_max=iter_max)
-            for name in solver_names
-        ]
-        return SolverSet(solvers)
+        parts = [opts.qp_solver]
+
+        if isinstance(opts, AcadosOcpQpOptions):
+            # Add non-default options to the ID
+            default_opts = AcadosOcpQpOptions()
+
+            # Get all properties of the class
+            props = [name for name, value in inspect.getmembers(type(opts)) if isinstance(value, property)]
+
+            for attr in props:
+                opts_value = getattr(opts, attr)
+                if attr == "qp_solver":
+                    continue  # skip qp_solver in ID
+                default_value = getattr(default_opts, attr)
+                if opts_value != default_value:
+                    parts.append(f"{attr}={opts_value}")
+
+            return "_".join(parts)
+        elif isinstance(opts, dict):
+            raise NotImplementedError("get_solver_id for dict options not implemented yet")
+
+    def get_solver_ids_by_names(self, names):
+        ids = []
+        for i in range(len(self.solver_ids)):
+            for name in names:
+                if name in self.solver_ids[i]:
+                    ids.append(self.solver_ids[i])
+        return ids
+
+    def dump_configs_to_json(self, path: str):
+        """Dump solver configurations to a JSON file for record-keeping."""
+        raise NotImplementedError("Dumping solver configs to JSON not implemented yet")

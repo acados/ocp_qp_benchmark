@@ -9,7 +9,7 @@ from tqdm import tqdm
 from acados_template import AcadosOcpQp, AcadosOcpQpSolver, AcadosOcpQpOptions
 
 from ocp_qp_benchmark.core.test_set import TestSet
-from ocp_qp_benchmark.core.solver_set import SolverSet, get_solver_id
+from ocp_qp_benchmark.core.solver_set import SolverSet
 from ocp_qp_benchmark.core.results import Results
 
 
@@ -105,8 +105,8 @@ def run(
             initial=0,
         )
 
-    for opts in solver_set:
-        solver_id = get_solver_id(opts)
+    for i, opts in enumerate(solver_set):
+        solver_id = solver_set.solver_ids[i]
         if progress_bar is not None:
             progress_bar.set_description(f"Solver: {solver_id}")
 

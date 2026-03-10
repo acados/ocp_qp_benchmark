@@ -10,7 +10,8 @@ from ocp_qp_benchmark.core.test_set import TestSet
 
 
 class Results:
-    """Test set results.
+    """
+    Log Test set results into csv file or parquet file.
 
     Attributes:
         df: Data frame storing the results.
