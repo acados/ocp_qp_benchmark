@@ -10,6 +10,12 @@ runs:
   using: 'composite'
   steps:
 
+    - name: Checkout acados repository
+      uses: actions/checkout@v4
+      with:
+        repository: acados/acados
+        path: ${{github.workspace}}/ocp_qp_benchmark/acados
+
     - name: Get latest acados run-id
       id: get-run-id
       env:
