@@ -5,24 +5,12 @@ from typing import List, Union
 
 from acados_template import AcadosOcpQpOptions
 from acados_template.acados_code_gen_opts import AcadosCodeGenOpts
+from ocp_qp_benchmark.core.supported_solvers import (
+    ACADOS_OCP_QP_SOLVERS,
+    ACADOS_CASADI_SOLVERS,
+    EXTERNAL_SOLVERS,
+)
 import json
-
-ACADOS_OCP_QP_SOLVERS = [
-    "PARTIAL_CONDENSING_OSQP",
-    "PARTIAL_CONDENSING_HPIPM",
-    "PARTIAL_CONDENSING_CLARABEL",
-    "FULL_CONDENSING_QPOASES",
-    "FULL_CONDENSING_HPIPM",
-    "FULL_CONDENSING_DAQP",
-]
-
-ACADOS_CASADI_SOLVERS = [
-    'IPOPT'
-]
-
-EXTERNAL_SOLVERS = [
-
-]
 
 class SolverSet:
     """Collection of solver configurations to benchmark."""
