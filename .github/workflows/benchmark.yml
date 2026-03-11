@@ -43,4 +43,4 @@ jobs:
       working-directory: ${{github.workspace}}/ocp_qp_benchmark
       run: |
         echo "Running ocp-benchmark to verify it executes..."
-        ocp-benchmark -f ocp_qp_dataset_collection/random_qp -s FULL_CONDENSING_QPOASES,PARTIAL_CONDENSING_HPIPM
+        ocp-benchmark -c tests/benchmark.json

@@ -5,17 +5,24 @@ from time import perf_counter
 
 import numpy as np
 from tqdm import tqdm
+from typing import Union
 
-from acados_template import AcadosOcpQp, AcadosOcpQpSolver, AcadosOcpQpOptions
+from acados_template import AcadosOcpQp, AcadosOcpQpSolver, AcadosCasadiOcpQpSolver, AcadosOcpQpOptions
 
 from ocp_qp_benchmark.core.test_set import TestSet
 from ocp_qp_benchmark.core.solver_set import SolverSet
 from ocp_qp_benchmark.core.results import Results
 
+from ocp_qp_benchmark.core.supported_solvers import (
+    ACADOS_OCP_QP_SOLVERS,
+    ACADOS_CASADI_SOLVERS,
+    EXTERNAL_SOLVERS,
+)
+
 
 def solve_problem(
     qp: AcadosOcpQp,
-    opts: AcadosOcpQpOptions,
+    opts: Union[AcadosOcpQpOptions, dict],
     repeat_times: int = 1,
     print_level: int = 0,
 ) -> dict:
@@ -30,6 +37,9 @@ def solve_problem(
     Returns:
         Dictionary containing solve results (status, iterations, runtimes, cost).
     """
+    if not isinstance(opts, AcadosOcpQpOptions) and not isinstance(opts, dict):
+        raise ValueError('Unknown solver options type, expected AcadosOcpQpOptions or dict')
+
     ctx = {}
     runtime_external = 1e50
 
@@ -38,15 +48,26 @@ def solve_problem(
 
     # Copy options to avoid mutation and set print level
     solver_opts = deepcopy(opts)
-    solver_opts.print_level = print_level - 1
+    # solver_opts.print_level = print_level - 1
 
     for _ in range(repeat_times):
         try:
-            qp_solver = AcadosOcpQpSolver(qp, solver_opts)
+            if solver_opts.get('qp_solver') in ACADOS_OCP_QP_SOLVERS:
+                qp_solver = AcadosOcpQpSolver(qp, solver_opts)
+            elif solver_opts.get('qp_solver') in ACADOS_CASADI_SOLVERS:
+                casadi_opts = solver_opts.copy()
+                casadi_opts.pop('qp_solver')
+                qp_solver = AcadosCasadiOcpQpSolver(qp,
+                                                    solver=solver_opts.get('qp_solver').lower(), 
+                                                    solver_opts=casadi_opts)
+            elif solver_opts.get('qp_solver') in EXTERNAL_SOLVERS:
+                raise NotImplementedError(f"External solvers not implemented yet")
+            else:
+                raise ValueError(f"Unknown solver: {solver_opts.get('qp_solver')}")
         except Exception as e:
             if print_level > 0:
                 print(
-                    f"Error initializing solver {opts.qp_solver} "
+                    f"Error initializing solver {solver_opts.get('qp_solver')} "
                     f"got error:\n {e}"
                 )
             ctx["status"] = -1  # ACADOS_UNKNOWN
@@ -60,14 +81,17 @@ def solve_problem(
         start_time = perf_counter()
         status = qp_solver.solve()
         if print_level > 0 and status != 0:
-            print(f"Solver {opts.qp_solver} failed with status {status}")
+            print(f"Solver {solver_opts.get('qp_solver')} failed with status {status}")
         runtime_external = min(runtime_external, perf_counter() - start_time)
         iter = qp_solver.get_stats("iter")
         runtime_internal = qp_solver.get_stats("time_tot")
-        runtime_fair = (
-            qp_solver.get_stats("time_qp_xcond")
-            + qp_solver.get_stats("time_qp_solver_call")
-        )
+        if solver_opts.get('qp_solver') in ACADOS_OCP_QP_SOLVERS:
+            runtime_fair = (
+                qp_solver.get_stats("time_qp_xcond")
+                + qp_solver.get_stats("time_qp_solver_call")
+            )
+        else:
+            runtime_fair = runtime_external
         # TODO: reset() needed
         qp_solver = None
 
