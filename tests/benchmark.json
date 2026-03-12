@@ -1,0 +1,53 @@
+{
+
+    "test_setting":[
+        "random_qp"
+    ],
+
+    "test_filter_setting": [
+        {"has_masks": false},
+        {"has_idxs_rev_not_idxs": false}
+    ],
+
+    "test_description": "Problems without masks and idxs_rev",
+
+    "solver_setting": [
+        {
+            "solver": "PARTIAL_CONDENSING_OSQP",
+            "opts": {}
+        },
+        {
+            "solver": "PARTIAL_CONDENSING_HPIPM",
+            "opts": {}
+        },
+        {
+            "solver": "PARTIAL_CONDENSING_HPIPM",
+            "opts": {"iter_max": 500}
+        },
+        {
+            "solver": "PARTIAL_CONDENSING_CLARABEL",
+            "opts": {}
+        },
+        {
+            "solver": "FULL_CONDENSING_QPOASES",
+            "opts": {}
+        },
+        {
+            "solver": "FULL_CONDENSING_HPIPM",
+            "opts": {}
+        },
+        {
+            "solver": "FULL_CONDENSING_DAQP",
+            "opts": {}
+        },
+        {
+            "solver": "IPOPT",
+            "opts": {"print_time": false, "ipopt": {"print_level": 0}}
+        }
+    ],
+
+    "eval_solver_names":[
+        "PARTIAL_CONDENSING_HPIPM",
+        "FULL_CONDENSING_HPIPM"
+    ]
+}

@@ -1,7 +1,7 @@
 """Solver settings and configuration."""
 
 import inspect
-from typing import List, Union
+from typing import Union
 
 from acados_template import AcadosOcpQpOptions
 from acados_template.acados_code_gen_opts import AcadosCodeGenOpts
@@ -15,11 +15,11 @@ import json
 class SolverSet:
     """Collection of solver configurations to benchmark."""
 
-    def __init__(self, solver_list: list[tuple[str, dict]]):
+    def __init__(self, solver_list: list[dict]):
         """Initialize solver set.
 
         Args:
-            solver_list: List of tuples mapping solver names to their configurations.
+            solver_list: List of dictionaries mapping solver names to their configurations.
         """
         self.solver_list = solver_list
         self.solvers = []
@@ -28,9 +28,9 @@ class SolverSet:
             self.link_lib_dict = json.load(f)
         self.link_lib_dict['hpipm'] = 'hpipm'  # hpipm is default and not in link_libs.json
 
-        for solver_tuple in self.solver_list:
-            name = solver_tuple[0]
-            opts = solver_tuple[1]
+        for solver_dict in self.solver_list:
+            name = solver_dict.get("solver")
+            opts = solver_dict.get("opts")
             if name in ACADOS_OCP_QP_SOLVERS:
                 self._add_acados_qp_solver(name, opts)
             elif name in ACADOS_CASADI_SOLVERS:
@@ -65,7 +65,9 @@ class SolverSet:
             print(f"Skipping solver {name} due to missing dependencies.")
 
     def _add_acados_casadi_qp_solver(self, name: str, opts: dict):
-        raise NotImplementedError(f"Casadi solvers not implemented yet")
+        opts['qp_solver'] = name
+        solver_opts = opts.copy()
+        self.solvers.append(solver_opts)
 
     def _add_external_solver(self, name: str, opts: dict):
         raise NotImplementedError(f"External solvers not implemented yet")
@@ -87,7 +89,7 @@ class SolverSet:
         Returns:
             Unique identifier string for this configuration.
         """
-        parts = [opts.qp_solver]
+        parts = [opts.get('qp_solver')]
 
         if isinstance(opts, AcadosOcpQpOptions):
             # Add non-default options to the ID
@@ -106,7 +108,9 @@ class SolverSet:
 
             return "_".join(parts)
         elif isinstance(opts, dict):
-            raise NotImplementedError("get_solver_id for dict options not implemented yet")
+            return opts.get('qp_solver', 'UNKNOWN_SOLVER')
+        else:
+            raise ValueError('Unknown solver options type, expected AcadosOcpQpOptions or dict')
 
     def get_solver_ids_by_names(self, names):
         ids = []

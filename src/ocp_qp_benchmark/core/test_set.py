@@ -63,21 +63,27 @@ class TestSet:
         """Count the number of problems in the test set."""
         return len(self.qp_folder_paths)
 
-    def filter_problems(self, opts : dict = None):
+    def filter_problems(self, opts : dict = None, verbose: bool = True) -> None:
         """
         Filter problems based on options.
         Args:
             opts: Dictionary of options to filter by (e.g., {"has_slacks": True})
         """
-        filtered_paths = []
         if opts is None:
             return self.qp_folder_paths
-        for qp_folder_path in self.qp_folder_paths:
-            if os.path.isdir(qp_folder_path):
-                meta_data = load_meta_data(qp_folder_path)
-                for key, value in opts.items():
-                    if meta_data.get(key) != value:
-                        break
-                    else:
-                        filtered_paths.append(qp_folder_path)
+        target_conditions = {k: v for opt in opts for k, v in opt.items()}
+        filtered_paths = []
+        for path in self.qp_folder_paths:
+            if not os.path.isdir(path):
+                continue
+            meta_data = load_meta_data(path)
+            is_fully_matched = all(
+                meta_data.get(k) == v for k, v in target_conditions.items()
+            )
+            if is_fully_matched:
+                filtered_paths.append(path)
         self.qp_folder_paths = filtered_paths
+        if verbose:
+            print("Filtered QP problems:")
+            for folder in filtered_paths:
+                print(f"  - {folder}")

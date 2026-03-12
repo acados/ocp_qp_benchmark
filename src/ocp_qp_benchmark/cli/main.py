@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import json
 
 from acados_template import AcadosOcpQpOptions
 
@@ -15,7 +16,25 @@ from ocp_qp_benchmark.visualization import plot_metric
 
 RESULT_PATH = "results/qpbenchmark_results.csv"
 
-def get_all_problems() -> list[str]:
+def parse_options(arg_list = None) -> dict:
+    parser = argparse.ArgumentParser(
+        description="run OCP QP benchmark"
+    )
+    parser.add_argument(
+        "-c", "--configs_path",
+        type=str,
+        required=True,
+        help="Path to JSON file for configs of benchmark run.",
+    )
+
+    args = parser.parse_args(arg_list)
+
+    with open(args.configs_path, 'r') as f:
+        config_dict = json.load(f)
+
+    return config_dict
+
+def get_problems(test_subset_path) -> list[str]:
     """Get all problems from the dataset collection.
 
     Args:
@@ -29,83 +48,38 @@ def get_all_problems() -> list[str]:
     if not os.path.exists(ocp_dataset_path):
         raise FileNotFoundError(f"Directory {ocp_dataset_path} not found")
 
-    subfolders = [
-        f
-        for f in os.listdir(ocp_dataset_path)
-        if os.path.isdir(os.path.join(ocp_dataset_path, f))
-    ]
-
     designated_problems = []
-    for folder in subfolders:
-        for qp_folder_name in os.listdir(os.path.join(ocp_dataset_path, folder)):
-            designated_problems.append(
-                os.path.join(ocp_dataset_path, folder, qp_folder_name)
-            )
+    for test_subset in test_subset_path:
+        problems = [os.path.join(ocp_dataset_path, test_subset, f) for f in os.listdir(os.path.join(ocp_dataset_path, test_subset))]
+        designated_problems.extend(problems)
     return designated_problems
 
-def main():
+def main(config_json: dict):
     """
     OCP QP Benchmark main file
     Also a example for setting up benchmark
 
     Users can run this script with default solver setting as follows:
-    ocp-benchmark -f ocp_qp_dataset_collection/random_qp -s PARTIAL_CONDENSING_OSQP,PARTIAL_CONDENSING_HPIPM
+    ocp-benchmark -c tests/benchmark.json
     """
 
-    parser = argparse.ArgumentParser(
-        description="run OCP QP benchmark"
-    )
-    parser.add_argument(
-        "--folder_path",
-        "-f", 
-        default=None,
-        help="Path to folder containing JSON folders of QPs for the problems. (defualt: None, which will use all problems in ocp_qp_dataset_collection)",
-    )
-    parser.add_argument(
-        "--solvers",
-        "-s",
-        default=None,
-        help="Name of the OCP QP solvers with default setting (default: None, which will use all AcadosOcpQpsolver with default setting)",
-    )
-
-    args = parser.parse_args()
+    test_subset_path = config_json.get("test_setting", None)
+    test_filter = config_json.get("test_filter_setting", None)
+    test_description = config_json.get("test_description", "")
+    solver_setting = config_json.get("solver_setting", None)
 
     ## Create test_set ##
     # get problems and create test set
-    example_qp_folders = get_all_problems() if args.folder_path is None else [os.path.join(args.folder_path, f) for f in os.listdir(args.folder_path)]
+    example_qp_folders = get_problems(test_subset_path)
     test_set = TestSet(qp_folder_paths=example_qp_folders)
     # filter problems
-    test_set.filter_problems(
-        {
-            "has_masks": False, 
-            "has_idxs_rev_not_idxs": False
-        }
-    )
+    test_set.filter_problems(test_filter)
     # define description for test set
-    test_set.description = "Problems without masks and idxs_rev"
+    test_set.description = test_description
 
     ## Create solver set ##
     # sepcify sovlers and corresponding options to be evaluated
-    if args.solvers is None:
-        designated_solver_list = [
-            ('PARTIAL_CONDENSING_OSQP', {}),
-            ('PARTIAL_CONDENSING_HPIPM', {}),
-            ('PARTIAL_CONDENSING_HPIPM', {'iter_max': 500}),
-            ('PARTIAL_CONDENSING_CLARABEL', {}),
-            ('FULL_CONDENSING_QPOASES', {}),
-            ('FULL_CONDENSING_HPIPM', {}),
-            ('FULL_CONDENSING_DAQP', {}),
-        ] # {} indicates default options for each solver
-    else:
-        designated_solver_list = []
-        for solver_name in args.solvers.split(","):
-            solver_name = solver_name.strip()
-            if solver_name in ACADOS_OCP_QP_SOLVERS:
-                designated_solver_list.append((solver_name, {}))
-            elif solver_name in ACADOS_CASADI_SOLVERS or solver_name in EXTERNAL_SOLVERS:
-                raise NotImplementedError(f"Casadi and external solvers not implemented yet, cannot add {solver_name}")
-            else:
-                raise ValueError(f"Unknown solver name: {solver_name}")
+    designated_solver_list = solver_setting
     # Generate labels based on differing options
     solver_set = SolverSet(solver_list = designated_solver_list)
 
@@ -132,14 +106,7 @@ def main():
 
     ## Evaluate ##
     # specify solvers to be evaluated
-    if args.solvers is None:
-        eval_solver_names = [
-            'PARTIAL_CONDENSING_HPIPM',
-            'FULL_CONDENSING_HPIPM'
-        ] # evaluate solvers by default
-    else:
-        eval_solver_names = args.solvers.split(",")
-
+    eval_solver_names = config_json.get("eval_solver_names", None)
     # filter solver_ids based on specified eval_solver_name
     eval_solver_ids = solver_set.get_solver_ids_by_names(eval_solver_names)
 
@@ -154,4 +121,7 @@ def main():
     )
 
 if __name__ == "__main__":
-    main()
+    # test_cli_input = ["-c", "tests/benchmark.json"]
+    # config_dict = parse_options(arg_list=test_cli_input)
+    config_dict = parse_options()
+    main(config_dict)
