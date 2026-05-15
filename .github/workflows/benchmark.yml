@@ -68,3 +68,8 @@ jobs:
         run: |
           echo "Testing IPOPT as reference solver..."
           ocp-benchmark -c tests/ref_test.json
+      - name: Run single problem test
+        working-directory: ${{github.workspace}}/ocp_qp_benchmark
+        run: |
+          echo "Running single problem test..."
+          python tests/test_single_problem.py

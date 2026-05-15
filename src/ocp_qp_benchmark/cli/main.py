@@ -4,14 +4,7 @@ import argparse
 import os
 import json
 
-from acados_template import AcadosOcpQpOptions
-
 from ocp_qp_benchmark.core import TestSet, SolverSet, Results, run
-from ocp_qp_benchmark.core.supported_solvers import (
-    ACADOS_OCP_QP_SOLVERS,
-    ACADOS_CASADI_SOLVERS,
-    EXTERNAL_SOLVERS,
-)
 from ocp_qp_benchmark.visualization import plot_metric
 
 RESULT_PATH = "results/qpbenchmark_results.csv"

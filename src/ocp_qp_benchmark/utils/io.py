@@ -19,7 +19,7 @@ def load_data(json_path: str) -> dict:
 
 def decompress(zstd_path) -> None:
     """
-    Decompress a zstd compressed json file and write the decompressed json to the temp file.
+    Decompress a zstd compressed json file into json data.
 
     Args:
         zstd_path: Path to the zstd compressed json file.
