@@ -64,6 +64,8 @@ def main(config_json: dict = None):
     test_description = config_json.get("test_description", "")
     solver_setting = config_json.get("solver_setting", None)
     compare_bool = config_json.get("compare_sol", False)
+    evaluation_bool = config_json.get("evaluation_bool", False)
+    metric = config_json.get("metric", "runtime_fair")
 
     ## Create test_set ##
     # get problems and create test set
@@ -72,7 +74,7 @@ def main(config_json: dict = None):
     # filter problems
     test_set.filter_problems(test_filter)
     # define description for test set
-    test_set.description = test_description
+    test_set.description = test_description.strip().replace(" ", "_").lower()
 
     ## Create solver set ##
     # sepcify sovlers and corresponding options to be evaluated
@@ -81,7 +83,7 @@ def main(config_json: dict = None):
     solver_set = SolverSet(solver_list = designated_solver_list)
 
     ## Create Results logger ##
-    results = Results(file_path=RESULT_PATH, test_set=test_set)
+    results = Results(RESULT_PATH)
 
     ## Run benchmark ##
     run(
@@ -94,31 +96,31 @@ def main(config_json: dict = None):
 
     ## Plotting ##
     plot_metric(
-        metric="runtime_fair",
+        metric=metric,
         df=results.df,
         solver_ids=solver_set.solver_ids,
         test_set=test_set,
-        linewidth=2.0,
-        savefig="figures/qpbenchmark_runtime_filtered.pdf",
+        savefig=f"figures/{test_set.description}_{metric}_filtered.pdf",
     )
 
-    ## Evaluate ##
-    # specify solvers to be evaluated
-    eval_solver_names = config_json.get("eval_solver_names", None)
-    # filter solver_ids based on specified eval_solver_name
-    eval_solver_ids = solver_set.get_solver_ids_by_names(eval_solver_names)
+    if evaluation_bool:
+        print("Evaluation mode: plotting only specified solvers")
+        ## Evaluate ##
+        # specify solvers to be evaluated
+        eval_solver_names = config_json.get("eval_solver_names", None)
+        # filter solver_ids based on specified eval_solver_name
+        eval_solver_ids = solver_set.get_solver_ids_by_names(eval_solver_names)
 
-    results = Results(file_path=RESULT_PATH, test_set=test_set)
-    plot_metric(
-        metric="runtime_fair",
-        df=results.df,
-        solver_ids=eval_solver_ids,
-        test_set=test_set,
-        linewidth=2.0,
-        savefig="figures/qpbenchmark_runtime.pdf",
-    )
+        plot_metric(
+            metric=metric,
+            df=results.df,
+            solver_ids=eval_solver_ids,
+            test_set=test_set,
+            linewidth=2.0,
+            savefig=f"figures/qpbenchmark_{metric}.pdf",
+        )
 
 if __name__ == "__main__":
-    test_cli_input = ["-c", "tests/benchmark.json"]
+    test_cli_input = ["-c", "indefinite_test.json"]
     config_dict = parse_options(arg_list=test_cli_input)
     main(config_dict)

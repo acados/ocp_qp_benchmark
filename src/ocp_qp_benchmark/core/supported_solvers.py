@@ -11,10 +11,5 @@ AcadosQPSolver = Literal[
 
 AcadosCasadiSolver = Literal['IPOPT']
 
-External_solvers = Literal[
-    None # placeholder for future external solvers
-]
-
 ACADOS_OCP_QP_SOLVERS = list(get_args(AcadosQPSolver))
 ACADOS_CASADI_SOLVERS = list(get_args(AcadosCasadiSolver))
-EXTERNAL_SOLVERS = list(get_args(External_solvers))

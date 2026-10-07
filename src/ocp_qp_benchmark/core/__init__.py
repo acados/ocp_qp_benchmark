@@ -6,8 +6,11 @@ from .test_set import TestSet
 from .solver_set import (
     SolverSet,
 )
+from .external import (
+    ExternalQp,
+    ExternalQpSolver,
+)
 from .supported_solvers import (
     ACADOS_OCP_QP_SOLVERS,
     ACADOS_CASADI_SOLVERS,
-    EXTERNAL_SOLVERS
 )
