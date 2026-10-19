@@ -126,7 +126,10 @@ class BenchSetManager:
         if status == 0:
             print("Reference solution found.")
             ref_sol: AcadosOcpIterate = qp_solver.get_iterate()
-        return ref_sol
+            return ref_sol
+        else:
+            print("No solution found.")
+            return None
 
     def _generate_problem_set(self, qp, new_name, json_file, added_problems):
         cctx = zstd.ZstdCompressor()
