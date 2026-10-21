@@ -58,7 +58,6 @@ def plot_metric(
     # float metrics (e.g. runtimes) on a log axis since they span orders of magnitude
     is_count_metric = pandas.api.types.is_integer_dtype(df[metric])
 
-    total_problems = test_set.count_problems()
     solved_df = df[df["status"] == 0]
 
     plot_solver_ids: List[str] = (
