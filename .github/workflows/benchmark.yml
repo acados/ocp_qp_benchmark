@@ -65,6 +65,12 @@ jobs:
         run: |
           echo "Running ocp-benchmark to verify it executes..."
           ocp-benchmark run -c tests/benchmark.json
+          mkdir -p figures
+          ocp-benchmark plot \
+            --results results/qpbenchmark_results.csv \
+            --output figures/ci-benchmark-runtime.pdf \
+            --no-latexify
+          test -s figures/ci-benchmark-runtime.pdf
       - name: Test IPOPT as reference solver
         working-directory: ${{github.workspace}}/ocp_qp_benchmark
         run: |
