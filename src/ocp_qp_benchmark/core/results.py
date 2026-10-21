@@ -51,6 +51,18 @@ class Results:
         self.file_path.unlink(missing_ok=True)
         self._rows: dict[tuple[str, str], dict] = {}
 
+    @staticmethod
+    def load_dataframe(file_path: Union[str, Path]) -> pandas.DataFrame:
+        """Load saved results without modifying the file."""
+        path = Path(file_path)
+        if path.suffix == ".parquet":
+            return pandas.read_parquet(path)
+        if path.suffix == ".csv":
+            return pandas.read_csv(path)
+        raise ValueError(
+            f"Results file must end in .csv or .parquet, got: {file_path}"
+        )
+
     @property
     def df(self) -> pandas.DataFrame:
         """Results data frame, sorted by problem and solver."""

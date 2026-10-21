@@ -1,33 +1,18 @@
-"""Main entry point for the OCP QP benchmark."""
+"""Command-line entry point for benchmark runs and result plotting."""
 
 import argparse
-import os
 import json
+import os
+from pathlib import Path
+from typing import Optional
 
-from ocp_qp_benchmark.core import TestSet, SolverSet, Results, run
+from ocp_qp_benchmark.core import Results, SolverSet, TestSet, run
 from ocp_qp_benchmark.visualization import plot_metric
 
-RESULT_PATH = "results/qpbenchmark_results.csv"
+RESULT_PATH = Path("results/qpbenchmark_results.csv")
 
-def parse_options(arg_list = None) -> dict:
-    parser = argparse.ArgumentParser(
-        description="run OCP QP benchmark"
-    )
-    parser.add_argument(
-        "-c", "--configs_path",
-        type=str,
-        required=True,
-        help="Path to JSON file for configs of benchmark run.",
-    )
 
-    args = parser.parse_args(arg_list)
-
-    with open(args.configs_path, 'r') as f:
-        config_dict = json.load(f)
-
-    return config_dict
-
-def get_problems(test_subset_path) -> list[str]:
+def get_problems(test_subset_path: list[str]) -> list[str]:
     """Get all problems from the dataset collection.
 
     Args:
@@ -47,28 +32,17 @@ def get_problems(test_subset_path) -> list[str]:
         designated_problems.extend(problems)
     return designated_problems
 
-def main(config_json: dict = None):
-    """
-    OCP QP Benchmark main file
-    Also a example for setting up benchmark
 
-    Users can run this script with default solver setting as follows:
-    ocp-benchmark -c tests/benchmark.json
-    """
-
-    if config_json is None:
-        config_json = parse_options()
+def run_from_config(config_path: str, results_path: str = str(RESULT_PATH)) -> None:
+    """Run a benchmark described by a JSON configuration file."""
+    with open(config_path, "r") as config_file:
+        config_json = json.load(config_file)
 
     test_subset_path = config_json.get("test_setting", None)
     test_filter = config_json.get("test_filter_setting", None)
     test_description = config_json.get("test_description", "")
     solver_setting = config_json.get("solver_setting", None)
     compare_bool = config_json.get("compare_sol", False)
-    evaluation_bool = config_json.get("evaluation_bool", False)
-    metric = config_json.get("metric", "runtime_fair")
-
-    ## Create test_set ##
-    # get problems and create test set
     example_qp_folders = get_problems(test_subset_path)
     test_set = TestSet(qp_folder_paths=example_qp_folders)
     # filter problems
@@ -76,16 +50,8 @@ def main(config_json: dict = None):
     # define description for test set
     test_set.description = test_description.strip().replace(" ", "_").lower()
 
-    ## Create solver set ##
-    # sepcify sovlers and corresponding options to be evaluated
-    designated_solver_list = solver_setting
-    # Generate labels based on differing options
-    solver_set = SolverSet(solver_list = designated_solver_list)
-
-    ## Create Results logger ##
-    results = Results(RESULT_PATH)
-
-    ## Run benchmark ##
+    solver_set = SolverSet(solver_list=solver_setting)
+    results = Results(results_path)
     run(
         test_set,
         solver_set,
@@ -94,33 +60,78 @@ def main(config_json: dict = None):
         print_level=2,
     )
 
-    ## Plotting ##
-    plot_metric(
-        metric=metric,
-        df=results.df,
-        solver_ids=solver_set.solver_ids,
-        test_set=test_set,
-        savefig=f"figures/{test_set.description}_{metric}_filtered.pdf",
-    )
-
-    if evaluation_bool:
-        print("Evaluation mode: plotting only specified solvers")
-        ## Evaluate ##
-        # specify solvers to be evaluated
-        eval_solver_names = config_json.get("eval_solver_names", None)
-        # filter solver_ids based on specified eval_solver_name
-        eval_solver_ids = solver_set.get_solver_ids_by_names(eval_solver_names)
-
-        plot_metric(
-            metric=metric,
-            df=results.df,
-            solver_ids=eval_solver_ids,
-            test_set=test_set,
-            linewidth=2.0,
-            savefig=f"figures/qpbenchmark_{metric}.pdf",
+def plot_results(
+    results_path: str,
+    metric: str = "runtime_fair",
+    solver_ids: Optional[list[str]] = None,
+    output_path: Optional[str] = None,
+    title: Optional[str] = None,
+) -> None:
+    """Create a plot from a saved CSV or Parquet results file."""
+    df = Results.load_dataframe(results_path)
+    if metric not in df.columns:
+        raise ValueError(
+            f"Unknown metric '{metric}'. Available columns: {', '.join(df.columns)}"
         )
 
+    available_solver_ids = list(df["solver"].drop_duplicates())
+    if solver_ids is not None:
+        unknown_ids = sorted(set(solver_ids) - set(available_solver_ids))
+        if unknown_ids:
+            raise ValueError(
+                f"Unknown solver IDs: {', '.join(unknown_ids)}. "
+                f"Available solver IDs: {', '.join(available_solver_ids)}"
+            )
+
+    if output_path is None:
+        output_path = str(Path("figures") / f"{Path(results_path).stem}_{metric}.pdf")
+
+    plot_metric(
+        metric=metric,
+        df=df,
+        solver_ids=solver_ids,
+        savefig=output_path,
+        title=title,
+    )
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Benchmark OCP QP solvers")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    run_parser = subparsers.add_parser("run", help="Run a benchmark")
+    run_parser.add_argument(
+        "-c", "--config", required=True, help="JSON benchmark configuration"
+    )
+    run_parser.add_argument(
+        "--results",
+        default=str(RESULT_PATH),
+        help=f"Output CSV or Parquet file (default: {RESULT_PATH})",
+    )
+
+    plot_parser = subparsers.add_parser("plot", help="Plot saved benchmark results")
+    plot_parser.add_argument("--results", required=True, help="Input CSV or Parquet file")
+    plot_parser.add_argument(
+        "--metric", default="runtime_fair", help="Numeric result column to plot"
+    )
+    plot_parser.add_argument(
+        "--solver-ids",
+        nargs="+",
+        default=None,
+        help="Exact solver IDs to include (default: all solver IDs)",
+    )
+    plot_parser.add_argument("--output", help="Output plot path (default: figures/<results>_<metric>.pdf)")
+    plot_parser.add_argument("--title", help="Optional plot title")
+    return parser
+
+
+def main(argv: Optional[list[str]] = None) -> None:
+    args = build_parser().parse_args(argv)
+    if args.command == "run":
+        run_from_config(args.config, args.results)
+    elif args.command == "plot":
+        plot_results(args.results, args.metric, args.solver_ids, args.output, args.title)
+
+
 if __name__ == "__main__":
-    test_cli_input = ["-c", "indefinite_test.json"]
-    config_dict = parse_options(arg_list=test_cli_input)
-    main(config_dict)
+    main()

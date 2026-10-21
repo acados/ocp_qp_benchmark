@@ -1,6 +1,6 @@
 """Plots for analysis of test set results."""
 
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,8 +8,6 @@ from matplotlib.ticker import MaxNLocator
 import pandas
 
 from acados_template import latexify_plot
-
-from ocp_qp_benchmark.core.test_set import TestSet
 
 # Font sizes in pt
 TITLE_FONTSIZE = 18
@@ -29,7 +27,7 @@ def _shorten_solver_name(name: str) -> str:
 def plot_metric(
     metric: str,
     df: pandas.DataFrame,
-    test_set: TestSet,
+    test_set=None,
     solver_ids: Optional[List[str]] = None,
     linewidth: float = 2.5,
     savefig: Optional[str] = None,
@@ -42,7 +40,7 @@ def plot_metric(
     Args:
         metric: Metric to compare solvers on.
         df: Test set results data frame.
-        test_set: Test set.
+        test_set: Optional test set used to provide the plot title and problem count.
         solver_ids: Solver IDs to compare (default: all in df).
         linewidth: Width of output lines, in px.
         savefig: If set, save plot to this path rather than displaying it.
@@ -54,7 +52,13 @@ def plot_metric(
         latexify_plot()
 
     assert pandas.api.types.is_numeric_dtype(df[metric])
-    print(f"Plotting {metric} on {test_set.description}...")
+    problem_count = (
+        test_set.count_problems() if test_set is not None else df["problem"].nunique()
+    )
+    plot_title = title
+    if plot_title is None:
+        plot_title = test_set.title if test_set is not None else ""
+    print(f"Plotting {metric}...")
 
     # Integer metrics (e.g. iterations) are drawn on a linear axis from zero,
     # float metrics (e.g. runtimes) on a log axis since they span orders of magnitude
@@ -120,10 +124,8 @@ def plot_metric(
     ax.text(min_x_limit, total_problems, f" Total Problems: {total_problems}",
             va="bottom", ha="left", color="gray", fontsize=TICK_FONTSIZE)
 
-    if title is None:
-        title = f"{test_set.title}"
-    if title != "":
-        ax.set_title(title, fontsize=TITLE_FONTSIZE, pad=12)
+    if plot_title != "":
+        ax.set_title(plot_title, fontsize=TITLE_FONTSIZE, pad=12)
     ax.set_xlabel(metric, fontsize=LABEL_FONTSIZE, labelpad=8)
     ax.set_ylabel("Solved Problems (Count)", fontsize=LABEL_FONTSIZE, labelpad=8)
     ax.set_xlim(min_x_limit, max_x_limit)

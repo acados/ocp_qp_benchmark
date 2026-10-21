@@ -18,7 +18,14 @@ Run all commands from the repository root, as `ocp_qp_dataset_collection/` is re
 ### Run benchmark
 
 ```bash
-ocp-benchmark -c tests/benchmark.json
+ocp-benchmark run -c tests/benchmark.json
+```
+
+By default, results are written to `results/qpbenchmark_results.csv`. Choose another
+CSV or Parquet output path with `--results`:
+
+```bash
+ocp-benchmark run -c tests/benchmark.json --results results/run-01.parquet
 ```
 
 Configuration keys (example: [tests/benchmark.json](tests/benchmark.json)):
@@ -29,11 +36,22 @@ Configuration keys (example: [tests/benchmark.json](tests/benchmark.json)):
 | `test_filter_setting` | Filters on the problem `meta.json`, e.g. `[{"has_slacks": false}]` |
 | `test_description` | Label used in plots |
 | `solver_setting` | List of `{"solver": <name>, "opts": {...}}`; a solver may appear several times with different options. External solvers also need `qp_class` and `solver_class`, see [Connect your own solver](#connect-your-own-solver) |
-| `eval_solver_names` | Solvers shown in a second, focused plot |
-| `metric` | Plotted metric (default: `runtime_fair`) |
 | `compare_sol` | Compare solutions with the reference solution (default: `false`) |
 
-Results are written to `results/qpbenchmark_results.csv`, plots to `figures/`.
+The `run` command only runs solvers and writes results. Plotting can be repeated later
+from the saved file, without rerunning the benchmark:
+
+```bash
+ocp-benchmark plot --results results/qpbenchmark_results.csv
+ocp-benchmark plot --results results/run-01.parquet \\
+    --metric runtime_fair \\
+    --solver-ids PARTIAL_CONDENSING_HPIPM FULL_CONDENSING_HPIPM \\
+    --output figures/hpipm-runtime.pdf
+```
+
+If `--solver-ids` is omitted, all solver IDs in the results file are plotted. IDs must
+match the `solver` column exactly. The default metric is `runtime_fair`; the default
+plot path is `figures/<results-file>_<metric>.pdf`.
 
 ### Add problems to dataset
 
