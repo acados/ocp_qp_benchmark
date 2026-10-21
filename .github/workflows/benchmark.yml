@@ -34,6 +34,8 @@ jobs:
         run: |
           echo "Testing ocp-benchmark CLI..."
           ocp-benchmark --help
+          ocp-benchmark run --help
+          ocp-benchmark plot --help
           echo "Testing add-problems CLI..."
           add-problems --help
 
@@ -62,12 +64,12 @@ jobs:
         working-directory: ${{github.workspace}}/ocp_qp_benchmark
         run: |
           echo "Running ocp-benchmark to verify it executes..."
-          ocp-benchmark -c tests/benchmark.json
+          ocp-benchmark run -c tests/benchmark.json
       - name: Test IPOPT as reference solver
         working-directory: ${{github.workspace}}/ocp_qp_benchmark
         run: |
           echo "Testing IPOPT as reference solver..."
-          ocp-benchmark -c tests/ref_test.json
+          ocp-benchmark run -c tests/ref_test.json
       - name: Run single problem test
         working-directory: ${{github.workspace}}/ocp_qp_benchmark
         run: |
