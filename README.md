@@ -37,11 +37,7 @@ Configuration keys (example: [tests/benchmark.json](tests/benchmark.json)):
 | `compare_sol` | Compare solutions with the reference solution (default: `false`) |
 
 The `run` command runs solvers and writes results.
-Evaluation can be performed later
-from the saved file, without rerunning the benchmark. It also prints a high-priority
-warning at the end if any solver succeeds on a problem without a reference solution,
-including the solver setting used. Use `has_reference_solution: false` in
-`test_filter_setting` to select problems that may be infeasible.
+Evaluation can be performed later from the results file, without rerunning the benchmark.
 
 When plotting, a problem with no reference solution is classified as infeasible only
 if every solver in the results file returned a nonzero status. Those nonzero results
@@ -59,6 +55,15 @@ ocp-benchmark plot --results results/run-01.parquet \\
 If `--solver-ids` is omitted, all solver IDs in the results file are plotted. IDs must
 match the `solver` column exactly. The default metric is `runtime_fair`; the default
 plot path is `figures/<results-file>_<metric>.pdf`.
+
+Create a Markdown table counting each status returned by each solver:
+
+```bash
+ocp-benchmark status-table --results results/qpbenchmark_results.csv
+```
+
+The table is saved as `<results-file>_status_table.md` beside the results file. Set
+`--output` to choose another path.
 
 ### Add problems to dataset
 
