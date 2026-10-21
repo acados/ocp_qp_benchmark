@@ -138,6 +138,7 @@ class BenchSetManager:
             qp, name=f"{new_name}_{json_file.name}"
         )
         ref_sol = self.generate_reference_solution(qp, meta_dict)
+        meta_dict["has_reference_solution"] = ref_sol is not None
 
         # Create new folder
         new_folder_path = self.dataset_path / json_file.stem

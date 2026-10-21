@@ -182,6 +182,7 @@ def run(
             total=nb_problems * nb_solvers,
             initial=0,
         )
+    successful_without_reference = {}
     with logging_redirect_tqdm():
         for i, opts in enumerate(solver_set):
             solver_id = solver_set.solver_ids[i]
@@ -196,6 +197,15 @@ def run(
                     f"with solver {solver_id}"
                 )
                 ctx, solver_sol = solve_problem(qp, opts)
+
+                with open(json_path_dict["meta_data_path"], "r") as meta_file:
+                    meta_dict = json.load(meta_file)
+                has_reference = meta_dict.get("has_reference_solution", False) or os.path.exists(
+                    json_path_dict["ref_sol_path"]
+                )
+                if ctx["status"] == 0 and not has_reference:
+                    problem_path = json_path_dict["qp_data_path"]
+                    successful_without_reference.setdefault(problem_path, set()).add(solver_id)
 
                 if compare_sol and solver_sol is not None:
                     compare_with_reference(json_path_dict, solver_sol)
@@ -212,3 +222,14 @@ def run(
 
     if progress_bar is not None:
         progress_bar.close()
+
+    if successful_without_reference:
+        logging.critical(
+            "SOLVER SUCCESS WITHOUT REFERENCE: %d problem(s) without a reference "
+            "were solved. Review these results and add trusted reference solutions:"
+            , len(successful_without_reference)
+        )
+        for problem_path, settings in sorted(successful_without_reference.items()):
+            logging.critical("  %s", problem_path)
+            for solver_id in sorted(settings):
+                logging.critical("    solved with %s", solver_id)

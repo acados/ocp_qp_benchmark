@@ -36,8 +36,17 @@ Configuration keys (example: [tests/benchmark.json](tests/benchmark.json)):
 | `solver_setting` | List of `{"solver": <name>, "opts": {...}}`; a solver may appear several times with different options. External solvers also need `qp_class` and `solver_class`, see [Connect your own solver](#connect-your-own-solver) |
 | `compare_sol` | Compare solutions with the reference solution (default: `false`) |
 
-The `run` command only runs solvers and writes results. Plotting can be repeated later
-from the saved file, without rerunning the benchmark:
+The `run` command runs solvers and writes results.
+Evaluation can be performed later
+from the saved file, without rerunning the benchmark. It also prints a high-priority
+warning at the end if any solver succeeds on a problem without a reference solution,
+including the solver setting used. Use `has_reference_solution: false` in
+`test_filter_setting` to select problems that may be infeasible.
+
+When plotting, a problem with no reference solution is classified as infeasible only
+if every solver in the results file returned a nonzero status. Those nonzero results
+count as solved for that problem. A status-0 result keeps the problem classified as
+solvable.
 
 ```bash
 ocp-benchmark plot --results results/qpbenchmark_results.csv
@@ -60,7 +69,7 @@ add-problems /path/to/json/folder --name my_dataset_name
 Each `.json` file must be loadable by `AcadosOcpQp.from_json()`. Problems are added to `ocp_qp_dataset_collection/my_dataset_name/` (default name: the folder name), each with:
 
 - `<problem>.json.zst`: compressed QP data
-- `<problem>_meta.json`: problem properties (`N`, `has_slacks`, `has_masks`, `definiteness`, ...), used by `test_filter_setting`
+- `<problem>_meta.json`: problem properties (`N`, `has_slacks`, `has_masks`, `definiteness`, `has_reference_solution`, ...), used by `test_filter_setting`
 - `<problem>_ref_sol.json.zst`: IPOPT reference solution (omitted if IPOPT fails)
 
 ### Python API

@@ -24,6 +24,22 @@ def _shorten_solver_name(name: str) -> str:
     short_name = short_name.replace("FULL_CONDENSING", "FCOND")
     return short_name
 
+
+def _successful_rows(df: pandas.DataFrame) -> pandas.DataFrame:
+    """Include failures only for problems with no reference and no solver success."""
+    successful = df[df["status"] == 0]
+    if "has_reference_solution" not in df.columns:
+        return successful
+
+    # add problems without reference solution, where all solvers failed.
+    has_reference = df.groupby("problem")["has_reference_solution"].any()
+    all_solvers_failed = (df["status"] != 0).groupby(df["problem"]).all()
+    infeasible_problems = has_reference.index[
+        ~has_reference & all_solvers_failed.reindex(has_reference.index, fill_value=False)
+    ]
+    failed_infeasible = df[df["problem"].isin(infeasible_problems)]
+    return pandas.concat([successful, failed_infeasible])
+
 def plot_metric(
     metric: str,
     df: pandas.DataFrame,
@@ -58,7 +74,7 @@ def plot_metric(
     # float metrics (e.g. runtimes) on a log axis since they span orders of magnitude
     is_count_metric = pandas.api.types.is_integer_dtype(df[metric])
 
-    solved_df = df[df["status"] == 0]
+    solved_df = _successful_rows(df)
 
     plot_solver_ids: List[str] = (
         solver_ids if solver_ids is not None else list(set(solved_df.solver))

@@ -16,6 +16,7 @@ COLUMNS = {
     "runtime_internal": float,
     "runtime_fair": float,
     "status": int,
+    "has_reference_solution": bool,
 }
 
 
@@ -79,11 +80,25 @@ class Results:
             solver_id: Solver identifier string.
             context: Solution context containing status, iterations, etc.
         """
+        problem = Path(problem)
         with open(problem, "r") as f:
-            problem_name = json.load(f)["name"].split(".")[0]
+            problem_metadata = json.load(f)
+        problem_name = problem_metadata["name"].split(".")[0]
 
         row = {"problem": problem_name, "solver": solver_id}
-        row.update({col: context[col] for col in COLUMNS if col not in row})
+        row.update(
+            {
+                col: context[col]
+                for col in COLUMNS
+                if col not in ("problem", "solver", "has_reference_solution")
+            }
+        )
+        reference_path = problem.with_name(
+            f"{problem.name.removesuffix('_meta.json')}_ref_sol.json.zst"
+        )
+        row["has_reference_solution"] = problem_metadata.get(
+            "has_reference_solution", reference_path.exists()
+        )
         self._rows[(problem_name, solver_id)] = row
 
     def write(self) -> None:
