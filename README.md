@@ -13,8 +13,6 @@ pip install -e .
 
 ## Usage
 
-Run all commands from the repository root, as `ocp_qp_dataset_collection/` is resolved relative to the working directory.
-
 ### Run benchmark
 
 ```bash

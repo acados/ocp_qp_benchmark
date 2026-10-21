@@ -2,7 +2,6 @@
 
 import argparse
 import json
-import os
 from pathlib import Path
 from typing import Optional
 
@@ -10,6 +9,7 @@ from ocp_qp_benchmark.core import Results, SolverSet, TestSet, run
 from ocp_qp_benchmark.visualization import plot_metric
 
 RESULT_PATH = Path("results/qpbenchmark_results.csv")
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 def get_problems(test_subset_path: list[str]) -> list[str]:
@@ -22,13 +22,16 @@ def get_problems(test_subset_path: list[str]) -> list[str]:
         List of paths to problem folders.
         e.g., ["ocp_qp_dataset_collection/random_qp/prob_0", ...]
     """
-    ocp_dataset_path = "ocp_qp_dataset_collection"
-    if not os.path.exists(ocp_dataset_path):
-        raise FileNotFoundError(f"Directory {ocp_dataset_path} not found")
+    ocp_dataset_path = PROJECT_ROOT / "ocp_qp_dataset_collection"
+    if not ocp_dataset_path.exists():
+        raise FileNotFoundError(f"Dataset collection not found: {ocp_dataset_path}")
 
     designated_problems = []
     for test_subset in test_subset_path:
-        problems = [os.path.join(ocp_dataset_path, test_subset, f) for f in os.listdir(os.path.join(ocp_dataset_path, test_subset))]
+        subset_path = ocp_dataset_path / test_subset
+        if not subset_path.is_dir():
+            raise FileNotFoundError(f"Dataset not found: {subset_path}")
+        problems = [str(path) for path in subset_path.iterdir()]
         designated_problems.extend(problems)
     return designated_problems
 
