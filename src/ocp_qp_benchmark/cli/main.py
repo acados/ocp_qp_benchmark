@@ -1,4 +1,4 @@
-"""Command-line entry point for benchmark runs and result plotting."""
+"""Command-line entry point for benchmark runs and result evaluation."""
 
 import argparse
 import json
@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional
 
 from ocp_qp_benchmark.core import Results, SolverSet, TestSet, run
-from ocp_qp_benchmark.visualization import plot_metric
+from ocp_qp_benchmark.evaluation import plot_metric, status_counts_markdown
 
 RESULT_PATH = Path("results/qpbenchmark_results.csv")
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -100,6 +100,22 @@ def plot_results(
     )
 
 
+def create_status_table(results_path: str, output_path: Optional[str] = None) -> None:
+    """Save a Markdown table of result counts grouped by solver and status."""
+    df = Results.load_dataframe(results_path)
+    markdown = status_counts_markdown(df)
+
+    if output_path is None:
+        output_path = str(Path(results_path).with_name(
+            f"{Path(results_path).stem}_status_table.md"
+        ))
+
+    output = Path(output_path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(markdown + "\n", encoding="utf-8")
+    print(f"Saved status table to {output}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Benchmark OCP QP solvers")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -134,6 +150,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Disable LaTeX plot styling",
     )
     plot_parser.set_defaults(latexify=True)
+
+    table_parser = subparsers.add_parser(
+        "status-table", help="Save solver status counts as a Markdown table"
+    )
+    table_parser.add_argument("--results", required=True, help="Input CSV or Parquet file")
+    table_parser.add_argument(
+        "--output",
+        help="Output Markdown path (default: <results>_status_table.md)",
+    )
     return parser
 
 
@@ -150,6 +175,8 @@ def main(argv: Optional[list[str]] = None) -> None:
             args.title,
             args.latexify,
         )
+    elif args.command == "status-table":
+        create_status_table(args.results, args.output)
 
 
 if __name__ == "__main__":
