@@ -27,7 +27,6 @@ def _shorten_solver_name(name: str) -> str:
 def plot_metric(
     metric: str,
     df: pandas.DataFrame,
-    test_set=None,
     solver_ids: Optional[List[str]] = None,
     linewidth: float = 2.5,
     savefig: Optional[str] = None,
@@ -39,8 +38,7 @@ def plot_metric(
 
     Args:
         metric: Metric to compare solvers on.
-        df: Test set results data frame.
-        test_set: Optional test set used to provide the plot title and problem count.
+        df: Results data frame containing the full benchmark problem set.
         solver_ids: Solver IDs to compare (default: all in df).
         linewidth: Width of output lines, in px.
         savefig: If set, save plot to this path rather than displaying it.
@@ -52,12 +50,8 @@ def plot_metric(
         latexify_plot()
 
     assert pandas.api.types.is_numeric_dtype(df[metric])
-    problem_count = (
-        test_set.count_problems() if test_set is not None else df["problem"].nunique()
-    )
-    plot_title = title
-    if plot_title is None:
-        plot_title = test_set.title if test_set is not None else ""
+    total_problems = df["problem"].nunique()
+    plot_title = title or ""
     print(f"Plotting {metric}...")
 
     # Integer metrics (e.g. iterations) are drawn on a linear axis from zero,
