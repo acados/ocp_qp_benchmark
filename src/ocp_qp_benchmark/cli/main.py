@@ -69,6 +69,7 @@ def plot_results(
     solver_ids: Optional[list[str]] = None,
     output_path: Optional[str] = None,
     title: Optional[str] = None,
+    latexify: bool = True,
 ) -> None:
     """Create a plot from a saved CSV or Parquet results file."""
     df = Results.load_dataframe(results_path)
@@ -95,6 +96,7 @@ def plot_results(
         solver_ids=solver_ids,
         savefig=output_path,
         title=title,
+        latexify=latexify,
     )
 
 
@@ -125,6 +127,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     plot_parser.add_argument("--output", help="Output plot path (default: figures/<results>_<metric>.pdf)")
     plot_parser.add_argument("--title", help="Optional plot title")
+    plot_parser.add_argument(
+        "--no-latexify",
+        dest="latexify",
+        action="store_false",
+        help="Disable LaTeX plot styling",
+    )
+    plot_parser.set_defaults(latexify=True)
     return parser
 
 
@@ -133,7 +142,14 @@ def main(argv: Optional[list[str]] = None) -> None:
     if args.command == "run":
         run_from_config(args.config, args.results)
     elif args.command == "plot":
-        plot_results(args.results, args.metric, args.solver_ids, args.output, args.title)
+        plot_results(
+            args.results,
+            args.metric,
+            args.solver_ids,
+            args.output,
+            args.title,
+            args.latexify,
+        )
 
 
 if __name__ == "__main__":
