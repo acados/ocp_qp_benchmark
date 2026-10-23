@@ -1,0 +1,51 @@
+{
+    "test_setting":[
+        "infeasible_hock_schittkowski_qps",
+        "infeasible_ocp_qps"
+    ],
+
+    "test_filter_setting": [
+        {"has_reference_solution": false}
+    ],
+
+    "test_description": "Potentially infeasible QPs",
+
+
+    "solver_setting": [
+        {
+            "solver": "PARTIAL_CONDENSING_HPIPM",
+            "opts": {"iter_max": 500},
+            "label": "OCP HPIPM"
+        },
+        {
+            "solver": "PARTIAL_CONDENSING_CLARABEL",
+            "opts": {"iter_max": 5000},
+            "label": "Clarabel"
+        },
+        {
+            "solver": "PARTIAL_CONDENSING_OSQP",
+            "opts": {"iter_max": 5000},
+            "label": "OSQP"
+        },
+        {
+            "solver": "FULL_CONDENSING_HPIPM",
+            "opts": {"iter_max": 500},
+            "label": "dense HPIPM"
+        },
+        {
+            "solver": "FULL_CONDENSING_HPIPM",
+            "opts": {"iter_max": 500, "with_simplex_feas_detect": 1, "simplex_max_iter": 5000},
+            "label": "FLEX-E + dense HPIPM"
+
+        },
+        {
+            "solver": "FULL_CONDENSING_DAQP",
+            "opts": {"iter_max": 500},
+            "label": "DAQP"
+        }
+    ],
+    "eval_solver_names":[
+        "PARTIAL_CONDENSING_HPIPM",
+        "FULL_CONDENSING_HPIPM"
+    ]
+}
