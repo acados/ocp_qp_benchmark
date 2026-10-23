@@ -214,6 +214,7 @@ def run(
                     json_path_dict["meta_data_path"],
                     solver_id,
                     ctx,
+                    solver_label=solver_set.solver_labels[i],
                 )
                 if progress_bar is not None:
                     progress_bar.update(1)

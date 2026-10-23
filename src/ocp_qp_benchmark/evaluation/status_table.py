@@ -1,6 +1,7 @@
 """Markdown reports for benchmark results."""
 
 import pandas
+from .labels import solver_display_labels
 
 
 def status_counts_markdown(df: pandas.DataFrame) -> str:
@@ -11,7 +12,7 @@ def status_counts_markdown(df: pandas.DataFrame) -> str:
         missing = ", ".join(sorted(missing_columns))
         raise ValueError(f"Results are missing required columns: {missing}")
 
-    counts = pandas.crosstab(df["solver"], df["status"])
+    counts = pandas.crosstab(solver_display_labels(df), df["status"])
     counts = counts.reindex(
         index=sorted(counts.index), columns=sorted(counts.columns), fill_value=0
     ).astype(int)

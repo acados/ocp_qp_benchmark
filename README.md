@@ -33,7 +33,7 @@ Configuration keys (example: [tests/benchmark.json](tests/benchmark.json)):
 | `test_setting` | Datasets in `ocp_qp_dataset_collection/`, e.g. `["random_qp"]` |
 | `test_filter_setting` | Filters on the problem `meta.json`, e.g. `[{"has_slacks": false}]` |
 | `test_description` | Label used in plots |
-| `solver_setting` | List of `{"solver": <name>, "opts": {...}}`; a solver may appear several times with different options. External solvers also need `qp_class` and `solver_class`, see [Connect your own solver](#connect-your-own-solver) |
+| `solver_setting` | List of `{"solver": <name>, "opts": {...}, "label": <optional display label>}`; a solver may appear several times with different options. Labels are shown in plots and status tables; without one, the solver ID is used. External solvers also need `qp_class` and `solver_class`, see [Connect your own solver](#connect-your-own-solver) |
 | `compare_sol` | Compare solutions with the reference solution (default: `false`) |
 
 The `run` command runs solvers and writes results.

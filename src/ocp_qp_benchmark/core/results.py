@@ -10,6 +10,7 @@ import pandas
 COLUMNS = {
     "problem": str,
     "solver": str,
+    "solver_label": str,
     "cost": float,
     "iterations": int,
     "runtime_external": float,
@@ -72,7 +73,13 @@ class Results:
             by=["problem", "solver"], ignore_index=True
         )
 
-    def update(self, problem: Path, solver_id: str, context: dict) -> None:
+    def update(
+        self,
+        problem: Path,
+        solver_id: str,
+        context: dict,
+        solver_label: str = "",
+    ) -> None:
         """Add or overwrite the entry for a given (problem, solver) pair.
 
         Args:
@@ -85,12 +92,21 @@ class Results:
             problem_metadata = json.load(f)
         problem_name = problem_metadata["name"].split(".")[0]
 
-        row = {"problem": problem_name, "solver": solver_id}
+        row = {
+            "problem": problem_name,
+            "solver": solver_id,
+            "solver_label": solver_label,
+        }
         row.update(
             {
                 col: context[col]
                 for col in COLUMNS
-                if col not in ("problem", "solver", "has_reference_solution")
+                if col not in (
+                    "problem",
+                    "solver",
+                    "solver_label",
+                    "has_reference_solution",
+                )
             }
         )
         reference_path = problem.with_name(

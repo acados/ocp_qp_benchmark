@@ -29,6 +29,7 @@ class SolverSet:
         self.solver_list = solver_list
         self.solvers = []
         self.solver_ids = []
+        self.solver_labels = []
         with open(AcadosCodeGenOptions().acados_lib_path + '/link_libs.json', 'r') as f:
             self.link_lib_dict = json.load(f)
         self.link_lib_dict['hpipm'] = 'hpipm'  # hpipm is default and not in link_libs.json
@@ -36,6 +37,10 @@ class SolverSet:
         for solver_dict in self.solver_list:
             name = solver_dict.get("solver")
             opts = solver_dict.get("opts")
+            label = solver_dict.get("label", "")
+            if label is not None and not isinstance(label, str):
+                raise ValueError(f"Solver label must be a string, got: {label!r}")
+            solver_count = len(self.solvers)
             if "qp_class" in solver_dict or "solver_class" in solver_dict:
                 self._add_external_solver(
                     name, solver_dict.get("qp_class"), solver_dict.get("solver_class"), opts
@@ -46,6 +51,8 @@ class SolverSet:
                 self._add_acados_casadi_qp_solver(name, opts)
             else:
                 raise ValueError(f"Unknown solver: {name}")
+            if len(self.solvers) > solver_count:
+                self.solver_labels.append(label.strip() if label else "")
         self.solver_ids = [self._create_solver_id(opts) for opts in self.solvers]
 
     def __len__(self) -> int:

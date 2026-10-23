@@ -8,6 +8,7 @@ from matplotlib.ticker import MaxNLocator
 import pandas
 
 from acados_template import latexify_plot
+from .labels import solver_display_labels
 
 # Font sizes in pt
 TITLE_FONTSIZE = 18
@@ -63,6 +64,9 @@ def plot_metric(
     plot_solver_ids: List[str] = (
         solver_ids if solver_ids is not None else list(set(solved_df.solver))
     )
+    display_labels = pandas.DataFrame(
+        {"solver": df["solver"], "label": solver_display_labels(df)}
+    ).drop_duplicates("solver").set_index("solver")["label"]
 
     palette = plt.get_cmap("tab10").colors
     solver_colors = {
@@ -73,9 +77,18 @@ def plot_metric(
     labels = {}
     seen = {}
     for solver_id in plot_solver_ids:
-        name = _shorten_solver_name(solver_id)
+        configured_label = display_labels.get(solver_id, "")
+        name = (
+            configured_label
+            if configured_label != solver_id
+            else _shorten_solver_name(solver_id)
+        )
         seen[name] = seen.get(name, 0) + 1
-        labels[solver_id] = f"{name}_{seen[name] - 1}"
+        labels[solver_id] = (
+            f"{name}_{seen[name] - 1}"
+            if configured_label == solver_id
+            else name if seen[name] == 1 else f"{name}_{seen[name] - 1}"
+        )
 
     solver_values = {}
     for solver_id in plot_solver_ids:
