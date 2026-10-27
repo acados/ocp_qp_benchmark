@@ -95,6 +95,7 @@ def solve_problem(
             runtime_fair = (
                 qp_solver.get_stats("time_qp_xcond")
                 + qp_solver.get_stats("time_qp_solver_call")
+                + qp_solver.get_stats("simplex_time")
             )
         else:
             runtime_fair = runtime_external
