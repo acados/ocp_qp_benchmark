@@ -97,6 +97,7 @@ def solve_problem(
                 + qp_solver.get_stats("time_qp_solver_call")
                 + qp_solver.get_stats("simplex_time")
             )
+            iter += qp_solver.get_stats("simplex_iter")
         else:
             runtime_fair = runtime_external
         solver_sol = qp_solver.get_iterate()
