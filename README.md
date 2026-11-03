@@ -35,8 +35,33 @@ Configuration keys (example: [tests/benchmark.json](tests/benchmark.json)):
 | `test_description` | Label used in plots |
 | `solver_setting` | List of `{"solver": <name>, "opts": {...}, "label": <optional display label>}`; a solver may appear several times with different options. Labels are shown in plots and status tables; without one, the solver ID is used. External solvers also need `qp_class` and `solver_class`, see [Connect your own solver](#connect-your-own-solver) |
 | `compare_sol` | Compare solutions with the reference solution (default: `false`) |
+| `repeat_times` | Solves per (problem, solver); every repetition uses a new solver and each runtime column is the minimum over the repetitions (default: `1`, overridden by `--repeat-times`) |
 
 The `run` command runs solvers and writes results.
+
+### Reproducible timings
+
+Repeat every solve and keep the fastest one to filter out CPU jitter, and on
+Linux pin the benchmark to one core with a fixed clock:
+
+```bash
+sudo scripts/cpu_benchmark_mode.sh setup 3        # core 3: turbo off, governor performance,
+                                                  # clock fixed at 85% of the nominal maximum
+ocp-benchmark run -c tests/benchmark.json --results results/run-01.csv \
+    --repeat-times 10 --cpu-core 3
+sudo scripts/cpu_benchmark_mode.sh restore        # restore the saved settings
+scripts/cpu_benchmark_mode.sh status 3            # show the current settings of core 3
+```
+
+`setup <core> [fraction]` disables turbo/boost globally and sets the
+`performance` governor and `scaling_min_freq = scaling_max_freq = fraction x
+nominal` (default `0.85`) on that core; the nominal (non-boosted) maximum is
+read from `base_frequency` (intel_pstate), `amd_pstate_nominal_freq`
+(amd-pstate) or `cpuinfo_max_freq` (acpi-cpufreq). The previous settings are
+saved in `/var/tmp/ocp_qp_benchmark_cpu_state`. `--cpu-core` pins the
+benchmark process with `sched_setaffinity` (ignored with a warning on other
+systems). For the most stable results also keep the hyperthread sibling of the
+core idle, or boot with `isolcpus=<core> nohz_full=<core>`.
 Evaluation can be performed later from the results file, without rerunning the benchmark.
 
 When plotting, a problem with no reference solution is classified as infeasible only
@@ -55,6 +80,18 @@ ocp-benchmark plot --results results/run-01.parquet \\
 If `--solver-ids` is omitted, all solver IDs in the results file are plotted. IDs must
 match the `solver` column exactly. The default metric is `runtime_fair`; the default
 plot path is `figures/<results-file>_<metric>.pdf`.
+
+Runtime columns:
+
+| Column | Meaning |
+| --- | --- |
+| `runtime_external` | Wall-clock time of `solve()` measured in Python (includes the Python/C interface) |
+| `runtime_internal` | acados `time_tot`, measured in C around condensing, the complete solver call and expansion |
+| `runtime_fair` | Metric for comparing solvers: `runtime_internal` for acados OCP QP solvers, so every solver is charged for its own preprocessing (e.g. the simplex LP setup, the DAQP LDP formation, the OSQP/Clarabel data conversion); `runtime_external` for other solvers |
+
+Result files written before this definition summed `time_qp_xcond`,
+`time_qp_solver_call` and `simplex_time` instead and are not comparable on
+`runtime_fair`.
 
 Create a Markdown table counting each status returned by each solver:
 
