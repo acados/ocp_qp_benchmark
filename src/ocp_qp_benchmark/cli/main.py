@@ -36,10 +36,20 @@ def get_problems(test_subset_path: list[str]) -> list[str]:
     return designated_problems
 
 
-def run_from_config(config_path: str, results_path: str = str(RESULT_PATH)) -> None:
-    """Run a benchmark described by a JSON configuration file."""
+def run_from_config(
+    config_path: str,
+    results_path: str = str(RESULT_PATH),
+    repeat_times: Optional[int] = None,
+) -> None:
+    """Run a benchmark described by a JSON configuration file.
+
+    repeat_times overrides the optional "repeat_times" key of the
+    configuration (default 1).
+    """
     with open(config_path, "r") as config_file:
         config_json = json.load(config_file)
+    if repeat_times is None:
+        repeat_times = int(config_json.get("repeat_times", 1))
 
     test_subset_path = config_json.get("test_setting", None)
     test_filter = config_json.get("test_filter_setting", None)
@@ -61,6 +71,7 @@ def run_from_config(config_path: str, results_path: str = str(RESULT_PATH)) -> N
         results,
         compare_sol=compare_bool,
         print_level=2,
+        repeat_times=repeat_times,
     )
 
 def plot_results(
@@ -129,6 +140,20 @@ def build_parser() -> argparse.ArgumentParser:
         default=str(RESULT_PATH),
         help=f"Output CSV or Parquet file (default: {RESULT_PATH})",
     )
+    run_parser.add_argument(
+        "--repeat-times",
+        type=int,
+        default=None,
+        help="Solves per (problem, solver); runtimes are the minimum over them "
+             "(default: 'repeat_times' in the configuration, else 1)",
+    )
+    run_parser.add_argument(
+        "--cpu-core",
+        type=int,
+        default=None,
+        help="Pin the benchmark to this CPU core (Linux only); see "
+             "scripts/cpu_benchmark_mode.sh to also fix the core frequency",
+    )
 
     plot_parser = subparsers.add_parser("plot", help="Plot saved benchmark results")
     plot_parser.add_argument("--results", required=True, help="Input CSV or Parquet file")
@@ -165,7 +190,8 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Optional[list[str]] = None) -> None:
     args = build_parser().parse_args(argv)
     if args.command == "run":
-        run_from_config(args.config, args.results)
+        if args.cpu_core is not None:
+            run_from_config(args.config, args.results, args.repeat_times)
     elif args.command == "plot":
         plot_results(
             args.results,

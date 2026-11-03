@@ -34,8 +34,11 @@ def solve_problem(
     Args:
         qp: The OCP QP problem to solve.
         opts: Solver options (will be copied to avoid mutation).
-        repeat_times: Number of times to repeat the solve (for timing).
-        print_level: Verbosity level (overrides opts.print_level).
+        repeat_times: Number of times the solve is repeated to filter out
+            timing noise. Every repetition creates a new solver, so no state
+            (warm/hot start, factorizations) is carried over. Each runtime is
+            the minimum over the repetitions; status, iterations and the
+            solution are those of the first repetition.
 
     Returns:
         Dictionary containing solve results (status, iterations, runtimes, cost),
@@ -160,6 +163,7 @@ def run(
     results: Results,
     compare_sol: bool = True,
     print_level: int = 1,
+    repeat_times: int = 1,
 ) -> None:
     """Run a given test set and store results.
 
@@ -168,6 +172,8 @@ def run(
         solver_set: The set of solvers to benchmark.
         results: Results object to store benchmark results.
         print_level: Verbosity level.
+        repeat_times: Number of solves per (problem, solver); runtimes are
+            the minimum over the repetitions (see solve_problem).
     """
     if print_level == 0:
         logging.getLogger().setLevel(logging.ERROR)
@@ -198,7 +204,7 @@ def run(
                     f"Solving problem {json_path_dict['qp_data_path']} "
                     f"with solver {solver_id}"
                 )
-                ctx, solver_sol = solve_problem(qp, opts)
+                ctx, solver_sol = solve_problem(qp, opts, repeat_times=repeat_times)
 
                 with open(json_path_dict["meta_data_path"], "r") as meta_file:
                     meta_dict = json.load(meta_file)
