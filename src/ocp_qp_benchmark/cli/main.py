@@ -2,6 +2,8 @@
 
 import argparse
 import json
+import logging
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -34,6 +36,15 @@ def get_problems(test_subset_path: list[str]) -> list[str]:
         problems = [str(path) for path in subset_path.iterdir()]
         designated_problems.extend(problems)
     return designated_problems
+
+
+def pin_to_cpu_core(core: int) -> None:
+    """Pin this process (and the solvers it calls) to one CPU core (Linux only)."""
+    if not hasattr(os, "sched_setaffinity"):
+        logging.warning("CPU pinning is only supported on Linux; --cpu-core %d ignored.", core)
+        return
+    os.sched_setaffinity(0, {core})
+    print(f"Pinned benchmark process to CPU core {core}.")
 
 
 def run_from_config(
@@ -191,7 +202,8 @@ def main(argv: Optional[list[str]] = None) -> None:
     args = build_parser().parse_args(argv)
     if args.command == "run":
         if args.cpu_core is not None:
-            run_from_config(args.config, args.results, args.repeat_times)
+            pin_to_cpu_core(args.cpu_core)
+        run_from_config(args.config, args.results, args.repeat_times)
     elif args.command == "plot":
         plot_results(
             args.results,
