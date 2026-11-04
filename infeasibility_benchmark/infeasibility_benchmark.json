@@ -47,5 +47,6 @@
     "eval_solver_names":[
         "PARTIAL_CONDENSING_HPIPM",
         "FULL_CONDENSING_HPIPM"
-    ]
+    ],
+    "repeat_times": 10
 }

@@ -61,8 +61,15 @@ def plot_metric(
     print(f"Plotting {metric}...")
     is_count_metric = pandas.api.types.is_integer_dtype(df[metric])
     solved_df = _successful_rows(df)
+    # Solvers in the order of their first appearance in the results, which
+    # Results sorts by solver ID: a deterministic order (unlike a set). Plot
+    # order, legend order and colors follow it, so a solver keeps its color in
+    # every plot of the same results file, also when it solves no problem or
+    # when only a subset is plotted with solver_ids.
+    all_solver_ids: List[str] = list(df["solver"].drop_duplicates())
     plot_solver_ids: List[str] = (
-        solver_ids if solver_ids is not None else list(set(solved_df.solver))
+        [solver_id for solver_id in all_solver_ids if solver_id in set(solver_ids)]
+        if solver_ids is not None else all_solver_ids
     )
     display_labels = pandas.DataFrame(
         {"solver": df["solver"], "label": solver_display_labels(df)}
@@ -71,7 +78,7 @@ def plot_metric(
     palette = plt.get_cmap("tab10").colors
     solver_colors = {
         solver_id: palette[i % len(palette)]
-        for i, solver_id in enumerate(plot_solver_ids)
+        for i, solver_id in enumerate(all_solver_ids)
     }
 
     labels = {}
