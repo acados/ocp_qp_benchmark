@@ -3,34 +3,20 @@
         "random_qp",
         "quadrotor_nav_acados",
         "pend_idxs_rev_min",
-        "qps"
+        "pendulum_sqp_qps",
+        "qps",
+        "regulator_positive_QPs"
     ],
 
     "test_filter_setting": [
     {
-        "has_reference_solution": true,
-        "has_idxs_rev_not_idxs": false
+        "has_reference_solution": true
     }
     ],
 
-    "test_description": "Potentially infeasible QPs",
+    "test_description": "Testing overhead of simplex",
 
     "solver_setting": [
-        {
-            "solver": "PARTIAL_CONDENSING_HPIPM",
-            "opts": {"iter_max": 500},
-            "label": "OCP HPIPM"
-        },
-        {
-            "solver": "PARTIAL_CONDENSING_CLARABEL",
-            "opts": {"iter_max": 5000},
-            "label": "Clarabel"
-        },
-        {
-            "solver": "PARTIAL_CONDENSING_OSQP",
-            "opts": {"iter_max": 5000},
-            "label": "OSQP"
-        },
         {
             "solver": "FULL_CONDENSING_HPIPM",
             "opts": {"iter_max": 500},
@@ -41,11 +27,6 @@
             "opts": {"iter_max": 500, "with_simplex_feas_detect": 1, "simplex_max_iter": 5000},
             "label": "FLEX-E + dense HPIPM"
 
-        },
-        {
-            "solver": "FULL_CONDENSING_DAQP",
-            "opts": {"iter_max": 500},
-            "label": "DAQP"
         }
     ],
 
