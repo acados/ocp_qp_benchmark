@@ -34,8 +34,11 @@ def solve_problem(
     Args:
         qp: The OCP QP problem to solve.
         opts: Solver options (will be copied to avoid mutation).
-        repeat_times: Number of times to repeat the solve (for timing).
-        print_level: Verbosity level (overrides opts.print_level).
+        repeat_times: Number of times the solve is repeated to filter out
+            timing noise. Every repetition creates a new solver, so no state
+            (warm/hot start, factorizations) is carried over. Each runtime is
+            the minimum over the repetitions; status, iterations and the
+            solution are those of the first repetition.
 
     Returns:
         Dictionary containing solve results (status, iterations, runtimes, cost),
@@ -45,10 +48,14 @@ def solve_problem(
         raise ValueError('Unknown solver options type, expected AcadosOcpQpOptions, dict or ExternalSolverConfig')
 
     ctx = {}
-    runtime_external = 1e50
-
-    if repeat_times != 1:
-        raise NotImplementedError("repeat_times != 1 not implemented yet")
+    if repeat_times < 1:
+        raise ValueError(f"repeat_times must be >= 1, got {repeat_times}")
+    runtime_external = float("inf")
+    runtime_internal = float("inf")
+    runtime_fair = float("inf")
+    status = None
+    iter = None
+    solver_sol = None
 
     # Copy options to avoid mutation and set print level
     solver_opts = deepcopy(opts)
@@ -58,7 +65,7 @@ def solve_problem(
     else:
         solver_name = solver_opts.get('qp_solver')
 
-    for _ in range(repeat_times):
+    for repetition in range(repeat_times):
         try:
             if solver_name in ACADOS_OCP_QP_SOLVERS:
                 qp_solver = AcadosOcpQpSolver(qp, solver_opts)
@@ -84,22 +91,35 @@ def solve_problem(
             return ctx, None
 
         start_time = perf_counter()
-        status = qp_solver.solve()
-        if status != 0:
-            logging.warning(f"Solver {solver_name} failed with status {status}")
+        rep_status = qp_solver.solve()
+        rep_external = perf_counter() - start_time
 
-        runtime_external = min(runtime_external, perf_counter() - start_time)
-        iter = qp_solver.get_stats("iter")
-        runtime_internal = qp_solver.get_stats("time_tot")
+        rep_iter = qp_solver.get_stats("iter")
+        rep_internal = qp_solver.get_stats("time_tot")
         if solver_name in ACADOS_OCP_QP_SOLVERS:
-            runtime_fair = (
-                qp_solver.get_stats("time_qp_xcond")
-                + qp_solver.get_stats("time_qp_solver_call")
-            )
+            # time_tot is measured in C around condensing, the complete
+            # solver call (including solver-side preprocessing such as the
+            # simplex LP setup or the DAQP LDP formation) and expansion, so
+            # it has the same scope for every acados solver.
+            rep_fair = rep_internal
+            rep_iter += qp_solver.get_stats("simplex_iter")
         else:
-            runtime_fair = runtime_external
-        solver_sol = qp_solver.get_iterate()
-        # TODO: reset() needed
+            rep_fair = rep_external
+
+        runtime_external = min(runtime_external, rep_external)
+        runtime_internal = min(runtime_internal, rep_internal)
+        runtime_fair = min(runtime_fair, rep_fair)
+
+        if repetition == 0:
+            status, iter = rep_status, rep_iter
+            solver_sol = qp_solver.get_iterate()
+            if status != 0:
+                logging.warning(f"Solver {solver_name} failed with status {status}")
+        elif rep_status != status or rep_iter != iter:
+            logging.warning(
+                f"Solver {solver_name}: repetition {repetition} returned status "
+                f"{rep_status} / {rep_iter} iterations, first solve {status} / {iter}"
+            )
         qp_solver = None
 
     ctx["status"] = status
@@ -158,6 +178,7 @@ def run(
     results: Results,
     compare_sol: bool = True,
     print_level: int = 1,
+    repeat_times: int = 1,
 ) -> None:
     """Run a given test set and store results.
 
@@ -166,6 +187,8 @@ def run(
         solver_set: The set of solvers to benchmark.
         results: Results object to store benchmark results.
         print_level: Verbosity level.
+        repeat_times: Number of solves per (problem, solver); runtimes are
+            the minimum over the repetitions (see solve_problem).
     """
     if print_level == 0:
         logging.getLogger().setLevel(logging.ERROR)
@@ -196,7 +219,7 @@ def run(
                     f"Solving problem {json_path_dict['qp_data_path']} "
                     f"with solver {solver_id}"
                 )
-                ctx, solver_sol = solve_problem(qp, opts)
+                ctx, solver_sol = solve_problem(qp, opts, repeat_times=repeat_times)
 
                 with open(json_path_dict["meta_data_path"], "r") as meta_file:
                     meta_dict = json.load(meta_file)

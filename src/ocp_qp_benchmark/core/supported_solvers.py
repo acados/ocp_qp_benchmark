@@ -1,6 +1,6 @@
 from typing import Literal, get_args
 
-AcadosQPSolver = Literal[
+AcadosQpSolvers = Literal[
     "PARTIAL_CONDENSING_OSQP",
     "PARTIAL_CONDENSING_HPIPM",
     "PARTIAL_CONDENSING_CLARABEL",
@@ -9,7 +9,7 @@ AcadosQPSolver = Literal[
     "FULL_CONDENSING_DAQP",
 ]
 
-AcadosCasadiSolver = Literal['IPOPT']
+AcadosCasadiSolvers = Literal['IPOPT']
 
-ACADOS_OCP_QP_SOLVERS = list(get_args(AcadosQPSolver))
-ACADOS_CASADI_SOLVERS = list(get_args(AcadosCasadiSolver))
+ACADOS_OCP_QP_SOLVERS = list(get_args(AcadosQpSolvers))
+ACADOS_CASADI_SOLVERS = list(get_args(AcadosCasadiSolvers))

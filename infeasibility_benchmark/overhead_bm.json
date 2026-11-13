@@ -1,0 +1,38 @@
+{
+    "test_setting":[
+        "random_qp",
+        "quadrotor_nav_acados",
+        "pend_idxs_rev_min",
+        "pendulum_sqp_qps",
+        "qps",
+        "regulator_positive_QPs"
+    ],
+
+    "test_filter_setting": [
+    {
+        "has_reference_solution": true
+    }
+    ],
+
+    "test_description": "Testing overhead of simplex",
+
+    "solver_setting": [
+        {
+            "solver": "FULL_CONDENSING_HPIPM",
+            "opts": {"iter_max": 500},
+            "label": "dense HPIPM"
+        },
+        {
+            "solver": "FULL_CONDENSING_HPIPM",
+            "opts": {"iter_max": 500, "with_simplex_feas_detect": 1, "simplex_max_iter": 5000},
+            "label": "FLEX-E + dense HPIPM"
+
+        }
+    ],
+
+    "eval_solver_names":[
+        "PARTIAL_CONDENSING_HPIPM",
+        "FULL_CONDENSING_HPIPM"
+    ],
+    "repeat_times": 10
+}
