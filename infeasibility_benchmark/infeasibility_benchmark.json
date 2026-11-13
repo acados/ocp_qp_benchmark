@@ -19,7 +19,7 @@
         },
         {
             "solver": "PARTIAL_CONDENSING_CLARABEL",
-            "opts": {"iter_max": 5000},
+            "opts": {"iter_max": 500},
             "label": "Clarabel"
         },
         {
